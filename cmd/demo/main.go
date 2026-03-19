@@ -41,7 +41,14 @@ func main() {
 
 	ctx := context.Background()
 
+	transferMethod := envOr("ASSET_TRANSFER_METHOD", "eip3009")
 	banner("x402 Payment Protocol — Full Flow Demo")
+	fmt.Printf("  Transfer Method: %s\n", transferMethod)
+	if transferMethod == "permit2" {
+		fmt.Println("  → Permit2 모드: x402Permit2Proxy 경유, 모든 ERC-20 토큰 지원")
+	} else {
+		fmt.Println("  → EIP-3009 모드: transferWithAuthorization 직접 호출 (USDC 전용)")
+	}
 	fmt.Println()
 
 	// ─────────────────────────────────────────────────────────
@@ -132,20 +139,35 @@ func main() {
 	fmt.Println("    • amount: 100000 (0.1 USDC, 6 decimals)")
 	fmt.Println("    • payTo: " + resCfg.PayToAddress)
 	fmt.Println("    • extra.name: USDC (EIP-712 도메인 name)")
+	if transferMethod == "permit2" {
+		fmt.Println("    • extra.assetTransferMethod: permit2 ← Client가 Permit2 서명 생성")
+	}
 	pause()
 
 	// ─────────────────────────────────────────────────────────
 	// STEP 5: Create Payment Signature
 	// ─────────────────────────────────────────────────────────
-	step(5, "Client: EIP-3009 서명 생성 (오프체인)")
-
-	fmt.Println("  1. 402 응답의 accepts에서 (scheme=exact, network=eip155:84532) 선택")
-	fmt.Println("  2. EIP-712 Typed Data 구성:")
-	fmt.Println("     Domain: { name: \"USDC\", version: \"2\", chainId: 84532, verifyingContract: 0x036C... }")
-	fmt.Println("     Message: TransferWithAuthorization { from, to, value, validAfter, validBefore, nonce }")
-	fmt.Println("  3. Client private key로 ECDSA 서명 (v, r, s)")
-	fmt.Println("  4. PaymentPayload JSON 생성 → base64 인코딩 → PAYMENT-SIGNATURE 헤더")
-	fmt.Println()
+	if transferMethod == "permit2" {
+		step(5, "Client: Permit2 서명 생성 (오프체인)")
+		fmt.Println("  1. 402 응답의 accepts에서 (scheme=exact, assetTransferMethod=permit2) 선택")
+		fmt.Println("  2. EIP-712 Typed Data 구성:")
+		fmt.Println("     Domain: Permit2 (0x000000000022D473030F116dDEE9F6B43aC78BA3)")
+		fmt.Println("     Message: PermitWitnessTransferFrom { permitted, spender, nonce, deadline, witness }")
+		fmt.Println("     - spender: x402Permit2Proxy (0x402085c248EeA27D92E8b30b2C58ed07f9E20001)")
+		fmt.Println("     - witness: { to, validAfter }")
+		fmt.Println("  3. Client private key로 ECDSA 서명 (v, r, s)")
+		fmt.Println("  4. Permit2Payload JSON 생성 → base64 인코딩 → PAYMENT-SIGNATURE 헤더")
+		fmt.Println()
+	} else {
+		step(5, "Client: EIP-3009 서명 생성 (오프체인)")
+		fmt.Println("  1. 402 응답의 accepts에서 (scheme=exact, network=eip155:84532) 선택")
+		fmt.Println("  2. EIP-712 Typed Data 구성:")
+		fmt.Println("     Domain: { name: \"USDC\", version: \"2\", chainId: 84532, verifyingContract: 0x036C... }")
+		fmt.Println("     Message: TransferWithAuthorization { from, to, value, validAfter, validBefore, nonce }")
+		fmt.Println("  3. Client private key로 ECDSA 서명 (v, r, s)")
+		fmt.Println("  4. PaymentPayload JSON 생성 → base64 인코딩 → PAYMENT-SIGNATURE 헤더")
+		fmt.Println()
+	}
 
 	// Actually create the payment using SDK
 	x402Client := x402.Newx402Client().
@@ -216,14 +238,27 @@ func main() {
 	prettyPrint("  요청 본문 (paymentPayload + paymentRequirements)", verifyJSON)
 	fmt.Println()
 
-	fmt.Println("  Facilitator 검증 항목:")
-	fmt.Println("    ✓ EIP-712 서명 복원 → from 주소 일치 확인")
-	fmt.Println("    ✓ authorization.to == payTo 확인")
-	fmt.Println("    ✓ authorization.value >= amount 확인")
-	fmt.Println("    ✓ validAfter <= now <= validBefore 시간 유효성")
-	fmt.Println("    ✓ nonce 미사용 확인 (이중 결제 방지)")
-	fmt.Println("    ✓ Client USDC 잔액 >= value 온체인 확인")
-	fmt.Println("    ✓ eth_call로 transferWithAuthorization 시뮬레이션")
+	if transferMethod == "permit2" {
+		fmt.Println("  Facilitator 검증 항목 (Permit2):")
+		fmt.Println("    ✓ EIP-712 서명 복원 → from 주소 일치 확인")
+		fmt.Println("    ✓ spender == x402Permit2Proxy 확인")
+		fmt.Println("    ✓ witness.to == payTo 확인")
+		fmt.Println("    ✓ permitted.amount >= amount 확인")
+		fmt.Println("    ✓ permitted.token == asset 확인")
+		fmt.Println("    ✓ deadline >= now, witness.validAfter <= now 시간 유효성")
+		fmt.Println("    ✓ Client USDC 잔액 >= value 온체인 확인")
+		fmt.Println("    ✓ Client → Permit2 approve 확인 (allowance)")
+		fmt.Println("    ✓ eth_call로 x402Permit2Proxy.settle 시뮬레이션")
+	} else {
+		fmt.Println("  Facilitator 검증 항목:")
+		fmt.Println("    ✓ EIP-712 서명 복원 → from 주소 일치 확인")
+		fmt.Println("    ✓ authorization.to == payTo 확인")
+		fmt.Println("    ✓ authorization.value >= amount 확인")
+		fmt.Println("    ✓ validAfter <= now <= validBefore 시간 유효성")
+		fmt.Println("    ✓ nonce 미사용 확인 (이중 결제 방지)")
+		fmt.Println("    ✓ Client USDC 잔액 >= value 온체인 확인")
+		fmt.Println("    ✓ eth_call로 transferWithAuthorization 시뮬레이션")
+	}
 	fmt.Println()
 
 	verifyResp, _ := http.Post(resCfg.FacilitatorURL+"/verify", "application/json", bytes.NewReader(verifyJSON))
@@ -256,13 +291,25 @@ func main() {
 	// ─────────────────────────────────────────────────────────
 	step(9, "Facilitator /settle → 온체인 정산 + PAYMENT-RESPONSE")
 
-	fmt.Println("  Facilitator 정산 과정:")
-	fmt.Println("    1. 서명에서 v, r, s 추출")
-	fmt.Println("    2. EIP-1559 트랜잭션 빌드 (gas estimation + 20% 버퍼)")
-	fmt.Println("    3. USDC.transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, v, r, s)")
-	fmt.Println("    4. Facilitator 지갑이 가스비 지불")
-	fmt.Println("    5. eth_sendRawTransaction → Base Sepolia 제출")
-	fmt.Println("    6. Receipt 대기 (2초 간격 polling)")
+	if transferMethod == "permit2" {
+		fmt.Println("  Facilitator 정산 과정 (Permit2):")
+		fmt.Println("    1. Permit2Authorization + 서명 추출")
+		fmt.Println("    2. EIP-1559 트랜잭션 빌드 (gas estimation + 20% 버퍼)")
+		fmt.Println("    3. x402Permit2Proxy.settle(owner, permitted, nonce, deadline, witness, signature)")
+		fmt.Println("       → Proxy가 Permit2.permitWitnessTransferFrom() 호출")
+		fmt.Println("       → USDC가 Client → PAY_TO로 이동")
+		fmt.Println("    4. Facilitator 지갑이 가스비 지불")
+		fmt.Println("    5. eth_sendRawTransaction → Base Sepolia 제출")
+		fmt.Println("    6. Receipt 대기 (2초 간격 polling)")
+	} else {
+		fmt.Println("  Facilitator 정산 과정:")
+		fmt.Println("    1. 서명에서 v, r, s 추출")
+		fmt.Println("    2. EIP-1559 트랜잭션 빌드 (gas estimation + 20% 버퍼)")
+		fmt.Println("    3. USDC.transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, v, r, s)")
+		fmt.Println("    4. Facilitator 지갑이 가스비 지불")
+		fmt.Println("    5. eth_sendRawTransaction → Base Sepolia 제출")
+		fmt.Println("    6. Receipt 대기 (2초 간격 polling)")
+	}
 	fmt.Println()
 
 	prHeader := paidResp.Header.Get("Payment-Response")
@@ -310,7 +357,11 @@ func main() {
 
 	fmt.Println()
 	fmt.Println("  자금 이동 요약:")
-	fmt.Println("    Client  → PAY_TO:       0.1 USDC (transferWithAuthorization)")
+	if transferMethod == "permit2" {
+		fmt.Println("    Client  → PAY_TO:       0.1 USDC (Permit2 → x402Permit2Proxy.settle)")
+	} else {
+		fmt.Println("    Client  → PAY_TO:       0.1 USDC (transferWithAuthorization)")
+	}
 	fmt.Println("    Facilitator:             가스비만 소모 (USDC 변동 없음)")
 	fmt.Println()
 
@@ -378,6 +429,13 @@ func pause() {
 	fmt.Print("  [Enter를 누르면 다음 단계로 →] ")
 	fmt.Scanln()
 	fmt.Println()
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func must(b []byte, err error) []byte {

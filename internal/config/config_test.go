@@ -19,6 +19,7 @@ func TestLoadFacilitator_Defaults(t *testing.T) {
 	os.Unsetenv("RPC_URL")
 	os.Unsetenv("NETWORK")
 	os.Unsetenv("FACILITATOR_PORT")
+	os.Unsetenv("ASSET_TRANSFER_METHOD")
 
 	cfg, err := LoadFacilitator()
 	if err != nil {
@@ -32,6 +33,9 @@ func TestLoadFacilitator_Defaults(t *testing.T) {
 	}
 	if cfg.Port != "4022" {
 		t.Errorf("expected default port 4022, got %s", cfg.Port)
+	}
+	if cfg.AssetTransferMethod != "eip3009" {
+		t.Errorf("expected default AssetTransferMethod eip3009, got %s", cfg.AssetTransferMethod)
 	}
 }
 
@@ -70,6 +74,7 @@ func TestLoadClient_Defaults(t *testing.T) {
 	t.Setenv("CLIENT_PRIVATE_KEY", "0xdeadbeef")
 	t.Setenv("RESOURCE_URL", "http://localhost:4021")
 	os.Unsetenv("ENDPOINT_PATH")
+	os.Unsetenv("ASSET_TRANSFER_METHOD")
 
 	cfg, err := LoadClient()
 	if err != nil {
@@ -77,6 +82,50 @@ func TestLoadClient_Defaults(t *testing.T) {
 	}
 	if cfg.EndpointPath != "/weather" {
 		t.Errorf("expected default endpoint /weather, got %s", cfg.EndpointPath)
+	}
+	if cfg.AssetTransferMethod != "eip3009" {
+		t.Errorf("expected default AssetTransferMethod eip3009, got %s", cfg.AssetTransferMethod)
+	}
+}
+
+func TestLoadFacilitator_Permit2(t *testing.T) {
+	t.Setenv("FACILITATOR_PRIVATE_KEY", "0xdeadbeef")
+	t.Setenv("ASSET_TRANSFER_METHOD", "permit2")
+
+	cfg, err := LoadFacilitator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AssetTransferMethod != "permit2" {
+		t.Errorf("expected AssetTransferMethod permit2, got %s", cfg.AssetTransferMethod)
+	}
+}
+
+func TestLoadResource_Permit2(t *testing.T) {
+	t.Setenv("FACILITATOR_URL", "http://localhost:4022")
+	t.Setenv("PAY_TO_ADDRESS", "0x1234")
+	t.Setenv("ASSET_TRANSFER_METHOD", "permit2")
+
+	cfg, err := LoadResource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AssetTransferMethod != "permit2" {
+		t.Errorf("expected AssetTransferMethod permit2, got %s", cfg.AssetTransferMethod)
+	}
+}
+
+func TestLoadClient_Permit2(t *testing.T) {
+	t.Setenv("CLIENT_PRIVATE_KEY", "0xdeadbeef")
+	t.Setenv("RESOURCE_URL", "http://localhost:4021")
+	t.Setenv("ASSET_TRANSFER_METHOD", "permit2")
+
+	cfg, err := LoadClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AssetTransferMethod != "permit2" {
+		t.Errorf("expected AssetTransferMethod permit2, got %s", cfg.AssetTransferMethod)
 	}
 }
 

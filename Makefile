@@ -1,4 +1,4 @@
-.PHONY: build test test-integration lint run-facilitator run-resource run-client clean
+.PHONY: build test test-integration lint run-facilitator run-resource run-client run-demo run-demo-permit2 clean
 
 build:
 	go build -o facilitator ./cmd/facilitator
@@ -25,6 +25,9 @@ run-client:
 
 run-demo:
 	go run ./cmd/demo
+
+run-demo-permit2:
+	ASSET_TRANSFER_METHOD=permit2 go run ./cmd/demo
 
 clean:
 	rm -f facilitator resource client

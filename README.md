@@ -2,7 +2,9 @@
 
 Production-grade Go implementation of the [x402 payment protocol](https://x402.org/) — HTTP-native micropayments over any EVM blockchain.
 
-Three independently deployable components demonstrate the full x402 payment lifecycle: a **Facilitator** that verifies and settles EIP-3009 payments on-chain, a **Resource Server** that gates API access behind HTTP 402, and a **Client CLI** that signs and submits payments automatically.
+Three independently deployable components demonstrate the full x402 payment lifecycle: a **Facilitator** that verifies and settles payments on-chain, a **Resource Server** that gates API access behind HTTP 402, and a **Client CLI** that signs and submits payments automatically.
+
+Supports two transfer methods — **EIP-3009** (`transferWithAuthorization`, USDC-native) and **Permit2** (universal ERC-20 via Uniswap Permit2) — switchable with a single environment variable.
 
 Tested and verified on **Base Sepolia** with real USDC transfers.
 
@@ -23,14 +25,14 @@ Tested and verified on **Base Sepolia** with real USDC transfers.
    │            │                │                   │                │                    │
    │  Signs     │                │                   │                │                    │
    │  EIP-3009  │  3. GET /api   │                   │  4. POST       │                    │
-   │  payload   │ ──────────────>│  Parses header,   │ ──/verify────> │  Recovers signer,  │
-   │            │  + PAYMENT-    │  forwards to      │                │  checks balance,   │
-   │            │    SIGNATURE   │  facilitator      │  5. POST       │  simulates call    │  ┌───────────┐
+   │  or        │ ──────────────>│  Parses header,   │ ──/verify────> │  Recovers signer,  │
+   │  Permit2   │  + PAYMENT-    │  forwards to      │                │  checks balance,   │
+   │  payload   │    SIGNATURE   │  facilitator      │  5. POST       │  simulates call    │  ┌───────────┐
    │            │                │                   │ ──/settle────> │                    │  │ EVM Chain │
    │            │                │                   │                │  Builds EIP-1559   │  │           │
-   │            │                │                   │                │  tx, calls         │──│ transfer  │
-   │            │                │                   │  6. tx hash    │  transferWith-     │  │ WithAuth  │
-   │            │  7. HTTP 200   │  Returns API data │ <─────────────│  Authorization     │  │ (USDC)    │
+   │            │                │                   │                │  tx, settles via   │──│ USDC      │
+   │            │                │                   │  6. tx hash    │  EIP-3009 or       │  │ transfer  │
+   │            │  7. HTTP 200   │  Returns API data │ <─────────────│  Permit2 Proxy     │  │           │
    │            │ <──────────────│  + PAYMENT-       │                │                    │  │           │
    │            │  + response    │    RESPONSE       │                │                    │  └───────────┘
    └────────────┘                └──────────────────┘                └────────────────────┘
@@ -39,10 +41,10 @@ Tested and verified on **Base Sepolia** with real USDC transfers.
 | Step | What happens |
 |------|-------------|
 | 1 | Client sends a normal HTTP request to a protected endpoint |
-| 2 | Resource Server responds with **HTTP 402** and a `PAYMENT-REQUIRED` header containing accepted schemes, network, amount, and recipient address |
-| 3 | Client creates an EIP-3009 `transferWithAuthorization` signature (EIP-712 typed data) and retries with a `PAYMENT-SIGNATURE` header |
-| 4-5 | Resource Server delegates verification and on-chain settlement to the Facilitator via `/verify` and `/settle` |
-| 6 | Facilitator submits the `transferWithAuthorization` transaction, pays gas, waits for confirmation, and returns the tx hash |
+| 2 | Resource Server responds with **HTTP 402** and a `PAYMENT-REQUIRED` header containing accepted schemes, network, amount, recipient address, and transfer method |
+| 3 | Client creates an EIP-712 signature — either EIP-3009 (`transferWithAuthorization`) or Permit2 (`permitWitnessTransferFrom`) — and retries with a `PAYMENT-SIGNATURE` header |
+| 4-5 | Resource Server delegates verification and on-chain settlement to the Facilitator via `/verify` and `/settle`. Facilitator auto-detects the payload type |
+| 6 | Facilitator submits the transaction (directly to USDC for EIP-3009, or via x402Permit2Proxy for Permit2), pays gas, waits for confirmation, and returns the tx hash |
 | 7 | Client receives the API response along with a `PAYMENT-RESPONSE` header containing the settlement transaction hash |
 
 ## Wallet Roles
@@ -51,9 +53,11 @@ The system uses three wallets with distinct roles. Notably, `PAY_TO_ADDRESS` doe
 
 ```
 Client Wallet                          PAY_TO Address
-(signs EIP-3009)                       (receives USDC)
+(signs payment)                        (receives USDC)
       │                                      ▲
-      │  0.1 USDC (transferWithAuth)         │
+      │  0.1 USDC                            │
+      │  (EIP-3009: transferWithAuth)        │
+      │  (Permit2: via x402Permit2Proxy)     │
       └──────────────────────────────────────┘
                         │
                Facilitator Wallet
@@ -62,8 +66,8 @@ Client Wallet                          PAY_TO Address
 
 | Wallet | Private Key? | Holds | Role |
 |--------|:---:|-------|------|
-| **Facilitator** | Yes | ETH (gas) | Submits `transferWithAuthorization` tx on-chain |
-| **Client** | Yes | USDC | Signs EIP-3009 payment authorizations |
+| **Facilitator** | Yes | ETH (gas) | Submits payment tx on-chain (EIP-3009 or Permit2) |
+| **Client** | Yes | USDC | Signs payment authorizations (EIP-3009 or Permit2) |
 | **PAY_TO** | **No** | Receives USDC | Any EVM address — MetaMask, exchange, multisig, etc. |
 
 ## Prerequisites
@@ -106,6 +110,9 @@ PAY_TO_ADDRESS=0x...
 NETWORK=eip155:84532
 RPC_URL=https://sepolia.base.org
 USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+# Transfer method: eip3009 (default) or permit2
+ASSET_TRANSFER_METHOD=eip3009
 ```
 
 ### 3. Start the servers
@@ -121,21 +128,24 @@ make run-resource
 ### 4. Run the interactive demo
 
 ```bash
-# Terminal 3 — Interactive 10-step walkthrough
+# Terminal 3 — EIP-3009 mode (default)
 make run-demo
+
+# Terminal 3 — Permit2 mode
+make run-demo-permit2
 ```
 
-The demo walks through the entire x402 payment flow step by step. Press Enter to advance each step:
+The demo walks through the entire x402 payment flow step by step, with explanations adapted to the active transfer method. Press Enter to advance each step:
 
-1. Wallet addresses and balances
+1. Wallet addresses, balances, and active transfer method
 2. Facilitator `/supported` discovery
 3. API call without payment → 402
-4. `PAYMENT-REQUIRED` header decoded
-5. EIP-3009 signature creation (off-chain)
+4. `PAYMENT-REQUIRED` header decoded (shows `assetTransferMethod` in Permit2 mode)
+5. Signature creation — EIP-3009 `TransferWithAuthorization` or Permit2 `PermitWitnessTransferFrom`
 6. Retry with `PAYMENT-SIGNATURE`
-7. Facilitator `/verify` (off-chain validation)
+7. Facilitator `/verify` — verification items differ by method
 8. 200 OK + API data returned
-9. Facilitator `/settle` → on-chain tx + `PAYMENT-RESPONSE`
+9. Facilitator `/settle` — EIP-3009 direct call or Permit2 Proxy settlement
 10. Before/after balance comparison
 
 ### 5. Or use the simple client
@@ -250,6 +260,7 @@ All configuration is via environment variables. Copy `.env.example` to `.env` fo
 | `RESOURCE_PORT` | resource | `4021` | HTTP listen port. |
 | `RESOURCE_URL` | client | *required* | Base URL of the Resource Server (e.g., `http://localhost:4021`). |
 | `ENDPOINT_PATH` | client | `/weather` | Default API endpoint to call. |
+| `ASSET_TRANSFER_METHOD` | all | `eip3009` | Transfer method: `eip3009` (USDC native) or `permit2` (any ERC-20 via Permit2). |
 | `LOG_LEVEL` | all | `info` | Log verbosity: `debug`, `info`, `warn`, `error`. |
 
 ## Switching Chains
@@ -265,16 +276,28 @@ USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 
 ### Chain Compatibility
 
-| Chain | EIP-3009 | Status |
-|-------|:---:|--------|
-| Base Sepolia | Yes | **Verified working** — tested with real txs |
-| Base Mainnet | Yes | SDK built-in support |
-| Polygon | Yes | SDK built-in support |
-| Arbitrum | Yes | SDK built-in support |
-| Chiliz Mainnet | **No** | Bridged USDC (ChainPort) — no `transferWithAuthorization` in bytecode |
-| Chiliz Spicy | **No** | No USDC deployed |
+| Chain | EIP-3009 | Permit2 | Status |
+|-------|:---:|:---:|--------|
+| Base Sepolia | Yes | Yes | **Verified working** (EIP-3009) |
+| Base Mainnet | Yes | Yes | SDK built-in support |
+| Polygon | Yes | Yes | SDK built-in support |
+| Arbitrum | Yes | Yes | SDK built-in support |
+| Chiliz Mainnet | **No** | **Unverified** | Bridged USDC (ChainPort), no EIP-3009. Permit2/Proxy deployment unknown |
+| Chiliz Spicy | **No** | **No** | No USDC deployed |
 
-> **Chiliz Note:** The USDC on Chiliz (`0xa37936F56249965d407E39347528a1A91eB1cbef`) is bridged via Chainport. It is a basic ERC-20 (1,798 bytes) named `"Bridged USDC (ChainPort)"` and does not implement EIP-3009. To use x402 on Chiliz, you would need to deploy a custom EIP-3009 compatible token or use the Permit2 transfer method.
+> **Chiliz Note:** The USDC on Chiliz (`0xa37936F56249965d407E39347528a1A91eB1cbef`) is bridged via Chainport. It is a basic ERC-20 (1,798 bytes) named `"Bridged USDC (ChainPort)"` and does not implement EIP-3009. To use x402 on Chiliz, Permit2 could work if both the Permit2 contract and x402Permit2Proxy are deployed there.
+
+### Transfer Method Comparison
+
+| | EIP-3009 | Permit2 |
+|---|---|---|
+| **Env value** | `eip3009` (default) | `permit2` |
+| **On-chain call** | `USDC.transferWithAuthorization(...)` | `x402Permit2Proxy.settle(...)` → `Permit2.permitWitnessTransferFrom(...)` |
+| **Token requirement** | Must implement EIP-3009 | Any ERC-20 |
+| **Setup** | None | Client must `approve(Permit2, amount)` once |
+| **Gas cost** | Lower (direct call) | Slightly higher (proxy + Permit2 hop) |
+| **EIP-712 domain** | Token contract (name, version, chainId, verifyingContract) | Permit2 contract |
+| **Contract addresses** | Token-specific | Permit2: `0x000...22D4` (Uniswap), Proxy: `0x4020...0001` (Coinbase) — same on all chains via CREATE2 |
 
 ## Docker
 
@@ -320,7 +343,7 @@ x402-demo/
 | x402 SDK | [coinbase/x402/go](https://github.com/coinbase/x402) (v2.6.0, V2 protocol) |
 | EVM Client | [go-ethereum](https://github.com/ethereum/go-ethereum) v1.17 |
 | HTTP Framework | [Gin](https://github.com/gin-gonic/gin) v1.12 |
-| Payment Scheme | EIP-3009 `transferWithAuthorization` (exact scheme) |
+| Payment Scheme | EIP-3009 `transferWithAuthorization` or Permit2 `permitWitnessTransferFrom` (exact scheme) |
 | Signature Standard | EIP-712 Typed Structured Data |
 | Transaction Format | EIP-1559 (dynamic fee) |
 | Logging | `log/slog` (structured JSON) |
@@ -351,7 +374,7 @@ Validates a payment payload without executing on-chain. Checks signature recover
 
 ### `POST /settle`
 
-Executes the payment on-chain by calling `transferWithAuthorization` on the token contract. The Facilitator wallet pays gas.
+Executes the payment on-chain. For EIP-3009, calls `transferWithAuthorization` on the token contract directly. For Permit2, calls `settle` on x402Permit2Proxy which routes through Permit2. Payload type is auto-detected. The Facilitator wallet pays gas.
 
 ```json
 // Response (200 OK)
@@ -400,18 +423,26 @@ This implementation uses the **x402 V2 protocol** with the following HTTP header
 | `PAYMENT-SIGNATURE` | Client -> Server | Base64-encoded signed payment payload |
 | `PAYMENT-RESPONSE` | Server -> Client | Base64-encoded settlement result (tx hash) |
 
-The payment scheme is `exact` using **EIP-3009** `transferWithAuthorization`:
+The payment scheme is `exact` with two supported transfer methods:
 
+**EIP-3009 mode** (default):
 1. Client signs an EIP-712 typed data message authorizing a token transfer
-2. Facilitator calls `transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, v, r, s)` on the token contract
+2. Facilitator calls `transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, v, r, s)` on the USDC contract
 3. Nonces are random 32-byte values (not sequential), allowing concurrent authorizations
-4. The Facilitator wallet pays gas; the Client wallet only signs — USDC goes directly from Client to `PAY_TO_ADDRESS`
+4. The Facilitator wallet pays gas; USDC goes directly from Client to `PAY_TO_ADDRESS`
+
+**Permit2 mode** (`ASSET_TRANSFER_METHOD=permit2`):
+1. Client signs an EIP-712 typed data message for Permit2 `PermitWitnessTransferFrom` (domain = Permit2 contract)
+2. Facilitator calls `x402Permit2Proxy.settle(owner, permitted, nonce, deadline, witness, signature)`
+3. Proxy calls `Permit2.permitWitnessTransferFrom()` which transfers the token from Client to `PAY_TO_ADDRESS`
+4. Requires one-time `approve(Permit2, amount)` from the Client wallet
+5. Works with any ERC-20 token, not just EIP-3009 compatible ones
 
 ## Development
 
 ```bash
 make build           # Compile all binaries
-make test            # Run all 25 unit tests
+make test            # Run all 28 unit tests
 make test-integration # Run integration tests (requires testnet)
 make lint            # Run golangci-lint
 make clean           # Remove compiled binaries
@@ -429,11 +460,11 @@ go test ./internal/signer -run TestFacilitatorSigner_Close -v
 
 | Package | Tests | What's tested |
 |---------|:-----:|---------------|
-| `internal/config` | 7 | Env loading, defaults, validation, log levels |
+| `internal/config` | 10 | Env loading, defaults, validation, log levels, Permit2 config |
 | `internal/facilserver` | 9 | Verify/settle/supported handlers with mock Facilitator |
 | `internal/server` | 4 | Weather/joke/premium-data response structure, health |
 | `internal/signer` | 5 | Key parsing, address derivation, 0x prefix, Close() zeroing |
-| **Total** | **25** | |
+| **Total** | **28** | |
 
 ## Verified Transactions
 

@@ -55,6 +55,7 @@ func main() {
 		"address", clientSigner.Address(),
 		"resourceURL", cfg.ResourceURL,
 		"endpoint", cfg.EndpointPath,
+		"assetTransferMethod", cfg.AssetTransferMethod,
 	)
 
 	// Create x402 client with EVM exact scheme

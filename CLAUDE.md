@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-Go-based x402 payment protocol demo — tested and verified on **Base Sepolia** with real USDC transfers. Three independently deployable components:
-- **Facilitator Server** — Verifies and settles EIP-3009 payments on-chain
+Go-based x402 payment protocol demo — tested and verified on **Base Sepolia** with real USDC transfers. Supports both **EIP-3009** and **Permit2** transfer methods. Three independently deployable components:
+- **Facilitator Server** — Verifies and settles payments on-chain (EIP-3009 or Permit2, auto-detected)
 - **Resource Server** — Protected APIs that return HTTP 402 with payment requirements
-- **Client CLI** — Signs EIP-3009 payloads and handles automatic payment flow
+- **Client CLI** — Signs payment payloads (EIP-3009 or Permit2) and handles automatic payment flow
 
 Chain-agnostic: configure via environment variables. Verified working on Base Sepolia (eip155:84532).
 
@@ -15,11 +15,12 @@ Chain-agnostic: configure via environment variables. Verified working on Base Se
 
 ```bash
 make build                    # Build all three binaries
-make test                     # Run all 25 unit tests
+make test                     # Run all 28 unit tests
 make run-facilitator          # go run ./cmd/facilitator
 make run-resource             # go run ./cmd/resource
 make run-client               # go run ./cmd/client
-make run-demo                 # Interactive 10-step payment flow demo
+make run-demo                 # Interactive 10-step payment flow demo (EIP-3009)
+make run-demo-permit2         # Interactive demo with Permit2 transfer method
 go test ./internal/config -run TestLoadFacilitator -v        # Single test
 go test ./internal/facilserver -run TestHandleVerify -v     # Facilserver tests
 go test ./internal/signer -run TestFacilitatorSigner -v     # Signer tests
@@ -44,8 +45,8 @@ Three distinct roles — `PAY_TO_ADDRESS` does NOT need a private key:
 
 | Wallet | Private Key? | Role |
 |--------|:---:|------|
-| `FACILITATOR_PRIVATE_KEY` | Required | Pays gas, submits `transferWithAuthorization` tx on-chain |
-| `CLIENT_PRIVATE_KEY` | Required | Holds USDC, signs EIP-3009 authorizations |
+| `FACILITATOR_PRIVATE_KEY` | Required | Pays gas, submits payment tx on-chain (EIP-3009 or Permit2) |
+| `CLIENT_PRIVATE_KEY` | Required | Holds USDC, signs payment authorizations |
 | `PAY_TO_ADDRESS` | **Not needed** | Receives USDC payments — any EVM address works |
 
 USDC flows directly from Client → PAY_TO. The Facilitator never touches USDC — it only relays the signed transaction and pays gas.
@@ -81,10 +82,15 @@ Key SDK types:
 
 ### MoneyParser: Network-Aware Price Resolution
 
-`cmd/resource/main.go` registers a custom `MoneyParser` on `evmserver.NewExactEvmScheme()`. **Critical behavior:**
+`cmd/resource/main.go` registers a custom `MoneyParser` on `evmserver.NewExactEvmScheme()`. **Dual-mode behavior:**
 
-- For SDK-supported networks (Base Sepolia, Base Mainnet, Polygon, etc.): returns `nil` to delegate to the SDK's built-in defaults. The SDK knows the correct USDC address, token name, and EIP-712 domain parameters.
-- For unknown networks (Chiliz, custom chains): returns a custom `AssetAmount` using `USDC_ADDRESS` from config.
+- **EIP-3009 mode** (`ASSET_TRANSFER_METHOD=eip3009`, default):
+  - SDK-supported networks (Base Sepolia, Base Mainnet, etc.): returns `nil` to delegate to SDK defaults.
+  - Unknown networks: returns custom `AssetAmount` using `USDC_ADDRESS` from config.
+- **Permit2 mode** (`ASSET_TRANSFER_METHOD=permit2`):
+  - ALL networks use custom parser to inject `extra.assetTransferMethod = "permit2"`.
+  - This overrides SDK defaults because the SDK's built-in configs default to EIP-3009.
+  - The `assetTransferMethod` field in `Extra` tells the Client SDK to create a Permit2 payload instead of EIP-3009.
 
 **Lesson learned:** The EIP-712 domain `name` must match the token contract's actual `name()` return value exactly. Base Sepolia USDC returns `"USDC"` (not `"USD Coin"`). A mismatch causes `FiatTokenV2: invalid signature` on-chain.
 
@@ -114,6 +120,7 @@ Facilitator endpoints receive payloads as `json.RawMessage` and pass `[]byte` di
 | `RESOURCE_PORT` | resource | `4021` |
 | `PAY_TO_ADDRESS` | resource | required (no private key needed) |
 | `RESOURCE_URL` | client | required |
+| `ASSET_TRANSFER_METHOD` | all | `eip3009` |
 | `LOG_LEVEL` | all | `info` |
 
 ## Verified Test Results (Base Sepolia)
@@ -122,17 +129,39 @@ Successfully tested on Base Sepolia with real USDC transfers:
 - Transaction: `0x99e49093d0bb2805b2e1097a6c71336c73f5871a4e51ec2dacc733f51faedc24`
 - Transaction: `0x6d3a230de24f0650703fc87fd9b3f0cb19cc914e6530aca4512d5956f4fb2445`
 
+## Transfer Methods
+
+Two transfer methods supported, switchable via `ASSET_TRANSFER_METHOD`:
+
+| Method | Env Value | How it works | Token requirement |
+|--------|-----------|-------------|-------------------|
+| **EIP-3009** | `eip3009` (default) | `transferWithAuthorization` on USDC contract directly | Token must implement EIP-3009 |
+| **Permit2** | `permit2` | `permitWitnessTransferFrom` via x402Permit2Proxy | Any ERC-20 (needs Permit2 approve) |
+
+### Permit2 Contract Addresses (CREATE2 — same on all EVM chains)
+
+| Contract | Address | Deployed by |
+|----------|---------|-------------|
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | Uniswap |
+| x402Permit2Proxy | `0x402085c248EeA27D92E8b30b2C58ed07f9E20001` | Coinbase |
+
+Both use CREATE2 deterministic deployment. Address is chain-agnostic but actual deployment status varies — verify with `cast code <address> --rpc-url <rpc>` before use.
+
+### Permit2 Prerequisites
+
+- Client must `approve(Permit2, amount)` the token to the Permit2 contract
+- Both Permit2 and x402Permit2Proxy must be deployed on the target chain
+- SDK handles all EIP-712 signing and on-chain settlement automatically
+
 ## Chain Compatibility Notes
 
-| Chain | EIP-3009 | Status |
-|-------|:---:|--------|
-| Base Sepolia (`eip155:84532`) | Supported | Verified working |
-| Base Mainnet (`eip155:8453`) | Supported | SDK built-in |
-| Polygon (`eip155:137`) | Supported | SDK built-in |
-| Chiliz Mainnet (`eip155:88888`) | **Not supported** | Bridged USDC (ChainPort), no `transferWithAuthorization` |
-| Chiliz Spicy (`eip155:88882`) | **Not supported** | No USDC deployed |
-
-For Chiliz: would need a custom EIP-3009 token deployment or Permit2 transfer method.
+| Chain | EIP-3009 | Permit2 | Status |
+|-------|:---:|:---:|--------|
+| Base Sepolia (`eip155:84532`) | Supported | Supported | Verified working (EIP-3009) |
+| Base Mainnet (`eip155:8453`) | Supported | Supported | SDK built-in |
+| Polygon (`eip155:137`) | Supported | Supported | SDK built-in |
+| Chiliz Mainnet (`eip155:88888`) | **No** | **Unverified** | Bridged USDC, no EIP-3009. Permit2/Proxy deployment status unknown |
+| Chiliz Spicy (`eip155:88882`) | **No** | **No** | No USDC deployed |
 
 ## External References
 
