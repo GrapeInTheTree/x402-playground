@@ -309,7 +309,7 @@ func (m *Model) viewList() string {
 		Foreground(tui.ColorSecondary).
 		MarginTop(1)
 
-	rowWidth := max(m.width-4, 20)
+	rowWidth := min(max(m.width-4, 20), 80)
 
 	var items strings.Builder
 	for i, q := range m.questions {
