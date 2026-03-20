@@ -91,20 +91,23 @@ The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) (Elm archit
 - `SubModel` interface — each page implements `Init()`, `Update()`, `View()`, `SetSize()`
 - `SubModelFactory` — lazy initialization of pages when first visited
 - Navigation: `NavigateMsg` to go to a page, `BackMsg` to return home
+- Help overlay: `?` toggles keyboard shortcuts (rendered inline in app.go to avoid circular import)
+- Minimum terminal size: 60x20 — shows resize prompt if too small
 - CLI flags `--mode` (learn/explore/practice/dashboard) and `--flow` (eip3009/permit2/sidebyside)
 
 Key TUI packages:
 - `internal/tui/components/` — Reusable: Menu, Panel, TriPanel, FieldExplorer, JSONView, Progress, StatusBar, Markdown
 - `internal/tui/learn/` — 6 markdown topics rendered via glamour, with viewport scrolling
 - `internal/tui/explore/` — PAYMENT-REQUIRED field explorer, EIP-712 TypedData inspector (Tab to switch EIP-3009/Permit2), EIP-3009 vs Permit2 comparison, on-chain state viewer
-- `internal/tui/practice/` — 10-step flow with 3-column panel (Client/Resource/Facilitator), step state machine (pending/running/done), `n`/`p` to advance/retreat
-- `internal/tui/dashboard/` — Live wallet balances from chain via RPC, `r` to refresh
+- `internal/tui/practice/` — **Live execution** of 10-step flow via `LiveExecutor`. Each step fires async `tea.Cmd` with real HTTP/SDK calls. 3-column panel (Client/Resource/Facilitator) with spinner animation during execution. `stepManager` tracks state (pending/running/done/error). Press `n` to execute, `p` to review previous.
+- `internal/tui/dashboard/` — Live wallet balances from chain via RPC with animated spinner, `r` to refresh
 
 Shared protocol logic extracted to `internal/demo/`:
 - `types.go` — `FlowState`, `WalletInfo`, `WalletBalance`, `DecodedPaymentRequired`, `AcceptItem`
-- `balance.go` — `QueryBalances()`, `QueryAllowance()` via ethclient + ERC-20 ABI
+- `balance.go` — `QueryBalances()`, `QueryAllowance()` via ethclient + ERC-20 ABI (exported `ERC20BalanceOfABI`/`ERC20AllowanceABI` to avoid duplication)
 - `decoder.go` — `DecodePaymentRequiredHeader()`, `DecodeBase64JSON()`, `FormatJSON()`, `ParseAcceptItem()`
 - `flow.go` — `FlowExecutor` with step methods for HTTP calls to facilitator/resource
+- `live.go` — `LiveExecutor` wraps the full 10-step flow with x402 SDK integration. Creates `Newx402Client` + `NewClientSignerFromPrivateKey` for payment signature generation. Accumulates state across steps (402 headers, payload bytes, selected requirements). Each `RunStep(ctx, step)` returns display text or error.
 
 ### SDK Usage Pattern
 
@@ -164,7 +167,8 @@ Facilitator endpoints receive payloads as `json.RawMessage` and pass `[]byte` di
 | `LOG_LEVEL` | all | `info` |
 
 Explorer's Learn and Explore modes work without private keys or server URLs (best-effort config).
-Practice and Dashboard modes require `CLIENT_PRIVATE_KEY`, `FACILITATOR_URL`, `RESOURCE_URL`.
+Practice mode requires `CLIENT_PRIVATE_KEY`, `FACILITATOR_URL`, `RESOURCE_URL` + running servers for live execution.
+Dashboard requires `RPC_URL` and `PAY_TO_ADDRESS` for balance queries (no servers needed).
 
 ## Verified Test Results (Base Sepolia)
 

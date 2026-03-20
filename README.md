@@ -16,7 +16,7 @@ Most x402 examples are minimal snippets. This project is a **complete, working r
 
 - **Full Lifecycle** — Facilitator, Resource Server, and Client CLI working end-to-end
 - **Dual Transfer Methods** — EIP-3009 and Permit2, switchable via one environment variable
-- **Interactive TUI Explorer** — Bubbletea-based tool with Learn, Explore, Practice, and Dashboard modes
+- **Interactive TUI Explorer** — Bubbletea-based tool with live payment execution, animated spinners, and keyboard help overlay
 - **Chain-Agnostic** — Configure any EVM chain via environment variables
 - **45 Unit Tests** — Config, handlers, signer, protocol logic all covered
 
@@ -26,11 +26,11 @@ Most x402 examples are minimal snippets. This project is a **complete, working r
 Client CLI ──HTTP──> Resource Server ──HTTP──> Facilitator Server ──RPC──> EVM Chain
 cmd/client           cmd/resource              cmd/facilitator
 
-Explorer TUI (cmd/explorer) — Interactive learning & practice tool
+Explorer TUI (cmd/explorer) — Interactive learning & live execution tool
   ├── Learn     — 6 protocol topics with markdown rendering
-  ├── Explore   — Data structure inspector (headers, EIP-712, on-chain)
-  ├── Practice  — 10-step payment flow (EIP-3009, Permit2, side-by-side)
-  └── Dashboard — Wallet balances (live from chain)
+  ├── Explore   — Data structure inspector (headers, EIP-712, on-chain state)
+  ├── Practice  — Live 10-step payment flow with real HTTP/SDK calls
+  └── Dashboard — Wallet balances with animated loading (live from chain)
 ```
 
 | Step | What happens |
@@ -127,11 +127,13 @@ ASSET_TRANSFER_METHOD=eip3009   # or permit2
 
 ```bash
 make run-explorer        # Home menu — choose a mode
-make run-learn           # Learn mode — protocol concepts
-make run-dashboard       # Dashboard — wallet balances
+make run-learn           # Learn mode — 6 protocol topics
+make run-dashboard       # Dashboard — live wallet balances
 ```
 
-### 4. Run the full payment flow
+Press `?` at any time for keyboard shortcuts.
+
+### 4. Run the full payment flow (live execution)
 
 ```bash
 # Terminal 1 — Facilitator (port 4022)
@@ -140,10 +142,12 @@ make run-facilitator
 # Terminal 2 — Resource Server (port 4021)
 make run-resource
 
-# Terminal 3 — Practice flow
-make run-demo            # EIP-3009 practice (TUI)
-make run-demo-permit2    # Permit2 practice (TUI)
+# Terminal 3 — Practice flow (press n to execute each step)
+make run-demo            # EIP-3009 live flow
+make run-demo-permit2    # Permit2 live flow
 ```
+
+Practice mode executes real HTTP calls and x402 SDK operations — press `n` to run each step, watch the 3-panel view update with live results from the facilitator and resource servers.
 
 ### 5. Or use the simple client
 
@@ -339,22 +343,25 @@ x402-playground/
 │   └── balance/main.go        Wallet balance checker
 ├── internal/
 │   ├── config/                Environment variable loading + validation
-│   ├── demo/                  Extracted protocol logic (types, balance, decoder, flow)
+│   ├── demo/                  Protocol logic + LiveExecutor for real payment execution
 │   ├── facilserver/           Facilitator HTTP handlers (/verify, /settle, /supported)
 │   ├── server/                Resource Server routes + API handlers
 │   ├── signer/                FacilitatorEvmSigner (EIP-1559, EIP-712)
 │   └── tui/                   TUI framework
-│       ├── app.go             Root model + page routing
+│       ├── app.go             Root model + page routing + help overlay + min size check
 │       ├── components/        Reusable UI (menu, panel, jsonview, fieldexplorer, progress...)
 │       ├── home/              Main menu (4 modes)
 │       ├── learn/             6 protocol topics with markdown rendering
 │       ├── explore/           Data structure inspector (headers, EIP-712, on-chain)
-│       ├── practice/          Payment flow execution (EIP-3009, Permit2, side-by-side)
+│       ├── practice/          Live payment flow execution (EIP-3009, Permit2, side-by-side)
 │       └── dashboard/         Live wallet balances
 ├── pkg/health/                Shared health check type
+├── .github/workflows/ci.yml  GitHub Actions CI (build + test + vet)
 ├── .env.example               Environment variable template
 ├── Dockerfile                 Multi-stage build
 ├── docker-compose.yml         Facilitator + Resource orchestration
+├── CONTRIBUTING.md            Contributor guidelines
+├── LICENSE                    MIT License
 └── Makefile                   Build, test, run targets
 ```
 
