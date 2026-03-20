@@ -89,15 +89,18 @@ USDC flows directly from Client → PAY_TO. The Facilitator never touches USDC �
 
 The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) (Elm architecture). `RootModel` in `internal/tui/app.go` routes between pages:
 
+- **Layout**: OpenCode-style — header bar (app name + page tab) + full-screen content + status bar. No outer border. Pages fill the available space.
 - `SubModel` interface — each page implements `Init()`, `Update()`, `View()`, `SetSize()`
-- `SubModelFactory` — lazy initialization of pages when first visited
+- `SubModelFactory` — lazy initialization of pages on first `WindowSizeMsg`
 - Navigation: `NavigateMsg` to go to a page, `BackMsg` to return home
-- Help overlay: `?` toggles keyboard shortcuts (rendered inline in app.go to avoid circular import)
+- Help overlay: `?` toggles keyboard shortcuts (rendered as centered overlay)
 - Minimum terminal size: 60x20 — shows resize prompt if too small
+- Home page: title + menu centered vertically and horizontally (landing screen)
+- Other pages: content fills from top, responsive to terminal width
 - CLI flags `--mode` (learn/explore/practice/dashboard) and `--flow` (eip3009/permit2/sidebyside)
 
 Key TUI packages:
-- `internal/tui/components/` — Reusable: Menu, Panel, TriPanel, FieldExplorer, JSONView, Progress, StatusBar, Markdown
+- `internal/tui/components/` — Reusable: Menu (with highlight bar), Panel, TriPanel, FieldExplorer, JSONView, Progress, StatusBar
 - `internal/tui/learn/` — Interactive coding quiz. 17 problems (13 Go + 4 Solidity) across 4 difficulty levels and 7 categories (Basics, ERC-20, EIP-712, EIP-3009, EIP-2612, x402, Permit2). Uses `tea.ExecProcess` to launch `$EDITOR` (nvim→vim→nano fallback), then auto-grades via `go test` or `forge test`. Score tracking across questions.
 - `internal/quiz/` — Quiz engine:
   - `types.go` — `Question` (with Lang, Category, Difficulty), `Result`, `Score`

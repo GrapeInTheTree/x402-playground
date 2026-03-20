@@ -381,7 +381,7 @@ x402-playground/
 | x402 SDK | [coinbase/x402/go](https://github.com/coinbase/x402) v2.6.0 |
 | EVM Client | [go-ethereum](https://github.com/ethereum/go-ethereum) v1.17 |
 | HTTP Framework | [Gin](https://github.com/gin-gonic/gin) v1.12 |
-| TUI Framework | [bubbletea](https://github.com/charmbracelet/bubbletea) + [lipgloss](https://github.com/charmbracelet/lipgloss) |
+| TUI Framework | [bubbletea](https://github.com/charmbracelet/bubbletea) + [lipgloss](https://github.com/charmbracelet/lipgloss) (OpenCode-style layout) |
 | Quiz Runner | `go test` (Go) + `forge test` ([Foundry](https://getfoundry.sh/)) (Solidity) |
 | Editor Integration | `tea.ExecProcess` → `$EDITOR` (nvim/vim/nano) |
 | Payment Scheme | EIP-3009 / Permit2 (exact scheme) |
