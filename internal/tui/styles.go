@@ -12,6 +12,7 @@ var (
 	ColorMuted     = lipgloss.Color("#6B7280") // gray
 	ColorBorder    = lipgloss.Color("#374151") // dark gray
 	ColorBg        = lipgloss.Color("#111827") // near-black
+	ColorSubtle    = lipgloss.Color("#1F2937") // slightly lighter than bg
 
 	// Text styles
 	TitleStyle = lipgloss.NewStyle().
@@ -63,50 +64,30 @@ var (
 			MarginTop(1)
 )
 
-// LayoutPage renders body inside a bordered container, centered in the terminal,
-// with a hints bar pinned at the bottom outside the border.
+// LayoutPage renders a full-screen layout with a colored header bar at top,
+// content filling the middle, and a status bar pinned at the bottom.
 func LayoutPage(body, hints string, width, height int) string {
-	// Hints bar at bottom (outside border)
-	hintsRendered := MutedStyle.Render("  " + hints)
-	hintsH := lipgloss.Height(hintsRendered) + 1 // +1 for gap
-
-	// Border container dimensions (with margin from terminal edges)
-	const hMargin = 2
-	boxW := width - hMargin*2
-	boxH := height - hintsH - 2 // 2 for top/bottom margin
-	if boxW < 40 {
-		boxW = width
-	}
-	if boxH < 10 {
-		boxH = height - hintsH
+	if width <= 0 || height <= 0 {
+		return body
 	}
 
-	// Inner content area (border takes 2 chars each side + padding)
-	innerW := boxW - 6 // 2 border + 4 padding (2 each side)
-	innerH := boxH - 4 // 2 border + 2 padding (1 top + 1 bottom)
-	if innerW < 20 {
-		innerW = boxW - 2
-	}
-	if innerH < 5 {
-		innerH = boxH - 2
-	}
+	// Status bar: full-width background
+	statusBar := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#9CA3AF")).
+		Background(ColorSubtle).
+		Width(width).
+		Padding(0, 2).
+		Render(hints)
 
-	// Center body inside the inner area
-	innerContent := lipgloss.Place(innerW, innerH,
-		lipgloss.Center, lipgloss.Center,
-		body)
+	statusH := lipgloss.Height(statusBar)
 
-	// Draw the bordered box
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(1, 2).
-		Width(boxW).
-		Height(boxH).
-		Render(innerContent)
+	// Content area: fill remaining height with left-aligned padded content
+	contentH := max(height-statusH, 1)
+	content := lipgloss.NewStyle().
+		Width(width).
+		Height(contentH).
+		Padding(0, 3).
+		Render(body)
 
-	// Center the box in the terminal width
-	centeredBox := lipgloss.PlaceHorizontal(width, lipgloss.Center, box)
-
-	return centeredBox + "\n" + hintsRendered
+	return lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
 }

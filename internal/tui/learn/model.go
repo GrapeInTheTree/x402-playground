@@ -2,6 +2,7 @@ package learn
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -139,9 +140,14 @@ func (m *Model) View() string {
 		hints = "  ↑/↓ scroll  ? help  esc back to topics"
 	}
 
+	divider := lipgloss.NewStyle().
+		Foreground(tui.ColorBorder).
+		Render(strings.Repeat("─", min(m.width-8, 60)))
+
 	body := lipgloss.JoinVertical(lipgloss.Left,
-		"",
 		header,
+		"",
+		divider,
 		"",
 		content,
 	)

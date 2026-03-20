@@ -1,6 +1,8 @@
 package home
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -73,7 +75,8 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the home page with title and menu.
 func (m *Model) View() string {
-	header := lipgloss.NewStyle().
+	// Header section
+	title := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
 		Render("x402 Protocol Explorer")
@@ -82,9 +85,17 @@ func (m *Model) View() string {
 		Foreground(tui.ColorMuted).
 		Render("Interactive learning tool for the x402 payment protocol")
 
+	divider := lipgloss.NewStyle().
+		Foreground(tui.ColorBorder).
+		Width(min(m.width-8, 60)).
+		Render(strings.Repeat("─", min(m.width-8, 60)))
+
 	body := lipgloss.JoinVertical(lipgloss.Left,
-		header,
+		"",
+		title,
 		subtitle,
+		"",
+		divider,
 		"",
 		m.menu.View(),
 	)

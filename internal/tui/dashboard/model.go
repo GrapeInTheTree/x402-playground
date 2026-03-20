@@ -140,14 +140,18 @@ func (m *Model) View() string {
 	networkInfo := tui.MutedStyle.Render(
 		fmt.Sprintf("Network: %s  |  USDC: %s", network, m.usdcAddr()))
 
+	divider := lipgloss.NewStyle().
+		Foreground(tui.ColorBorder).
+		Render(strings.Repeat("─", min(m.width-8, 60)))
+
 	body := lipgloss.JoinVertical(lipgloss.Left,
-		"",
 		header,
+		"",
+		divider,
 		"",
 		networkInfo,
 		"",
 		content,
-		"",
 	)
 
 	return tui.LayoutPage(body, "  r refresh  ? help  esc back", m.width, m.height)

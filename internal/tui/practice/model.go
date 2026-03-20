@@ -1,6 +1,8 @@
 package practice
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -175,9 +177,14 @@ func (m *Model) View() string {
 		hints = "  n next step  ? help  esc back to menu"
 	}
 
+	divider := lipgloss.NewStyle().
+		Foreground(tui.ColorBorder).
+		Render(strings.Repeat("─", min(m.width-8, 60)))
+
 	body := lipgloss.JoinVertical(lipgloss.Left,
-		"",
 		header,
+		"",
+		divider,
 		"",
 		content,
 	)
