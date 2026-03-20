@@ -123,7 +123,7 @@ func (m *Model) View() string {
 
 	if m.current == viewTopicList {
 		content = m.menu.View()
-		hints = "  ↑/↓ navigate  enter select  esc back"
+		hints = "  ↑/↓ navigate  enter select  ? help  esc back"
 	} else {
 		scrollPct := fmt.Sprintf("%d%%", int(m.viewport.ScrollPercent()*100))
 		title := lipgloss.NewStyle().
@@ -132,7 +132,7 @@ func (m *Model) View() string {
 			Render(m.topics[m.menu.Selected()].Title + " " +
 				tui.MutedStyle.Render("["+scrollPct+"]"))
 		content = title + "\n" + m.viewport.View()
-		hints = "  ↑/↓ scroll  esc back to topics"
+		hints = "  ↑/↓ scroll  ? help  esc back to topics"
 	}
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)

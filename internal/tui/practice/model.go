@@ -63,6 +63,17 @@ func NewWithFlow(width, height int, cfg *config.ExplorerConfig, flow string) *Mo
 }
 
 func (m *Model) Init() tea.Cmd {
+	// If a sub-flow was pre-selected (via NewWithFlow), start its spinner
+	switch m.sub {
+	case subPageEIP3009:
+		if m.eip3009flow != nil {
+			return m.eip3009flow.Init()
+		}
+	case subPagePermit2:
+		if m.permit2flow != nil {
+			return m.permit2flow.Init()
+		}
+	}
 	return nil
 }
 
@@ -78,18 +89,21 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 			case "down", "j":
 				m.menu.Down()
 			case "enter":
+				var initCmd tea.Cmd
 				switch m.menu.Selected() {
 				case 0:
 					m.eip3009flow = NewEIP3009FlowModel(m.width, m.height, m.cfg)
 					m.sub = subPageEIP3009
+					initCmd = m.eip3009flow.Init()
 				case 1:
 					m.permit2flow = NewPermit2FlowModel(m.width, m.height, m.cfg)
 					m.sub = subPagePermit2
+					initCmd = m.permit2flow.Init()
 				case 2:
 					m.sidebyside = NewSideBySideModel(m.width, m.height, m.cfg)
 					m.sub = subPageSideBySide
 				}
-				return m, nil
+				return m, initCmd
 			}
 			return m, nil
 		}
@@ -138,22 +152,22 @@ func (m *Model) View() string {
 	switch m.sub {
 	case subPageMenu:
 		content = m.menu.View()
-		hints = "  ↑/↓ navigate  enter select  esc back"
+		hints = "  ↑/↓ navigate  enter select  ? help  esc back"
 	case subPageEIP3009:
 		if m.eip3009flow != nil {
 			content = m.eip3009flow.View()
 		}
-		hints = "  n next step  p prev step  esc back to menu"
+		hints = "  n next step  p prev step  ? help  esc back to menu"
 	case subPagePermit2:
 		if m.permit2flow != nil {
 			content = m.permit2flow.View()
 		}
-		hints = "  n next step  p prev step  esc back to menu"
+		hints = "  n next step  p prev step  ? help  esc back to menu"
 	case subPageSideBySide:
 		if m.sidebyside != nil {
 			content = m.sidebyside.View()
 		}
-		hints = "  n next step  esc back to menu"
+		hints = "  n next step  ? help  esc back to menu"
 	}
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)

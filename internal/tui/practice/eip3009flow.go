@@ -1,18 +1,39 @@
 package practice
 
 import (
+	"context"
+
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/GrapeInTheTree/x402-playground/internal/config"
 	"github.com/GrapeInTheTree/x402-playground/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
-// EIP3009FlowModel manages the EIP-3009 10-step payment flow.
+type stepResultMsg struct {
+	step int
+	data string
+}
+
+type stepErrorMsg struct {
+	step int
+	err  error
+}
+
+// EIP3009FlowModel manages the EIP-3009 10-step payment flow with live execution.
 type EIP3009FlowModel struct {
-	sm     stepManager
-	width  int
-	height int
-	cfg    *config.ExplorerConfig
+	sm       stepManager
+	executor *demo.LiveExecutor
+	execErr  string // error creating executor
+	running  bool
+	spinner  spinner.Model
+	results  [10]string
+	errors   [10]string
+	width    int
+	height   int
+	cfg      *config.ExplorerConfig
 }
 
 func NewEIP3009FlowModel(width, height int, cfg *config.ExplorerConfig) *EIP3009FlowModel {
@@ -29,26 +50,112 @@ func NewEIP3009FlowModel(width, height int, cfg *config.ExplorerConfig) *EIP3009
 		{"최종 잔액 확인", "—", "—"},
 	}
 
-	return &EIP3009FlowModel{
-		sm:     newStepManager(demo.NewFlowState("eip3009"), descriptions),
-		width:  width,
-		height: height,
-		cfg:    cfg,
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(tui.ColorAccent)
+
+	m := &EIP3009FlowModel{
+		sm:      newStepManager(demo.NewFlowState("eip3009"), descriptions),
+		spinner: s,
+		width:   width,
+		height:  height,
+		cfg:     cfg,
 	}
+
+	// Try to create live executor
+	if cfg != nil {
+		exec, err := demo.NewLiveExecutor(
+			cfg.FacilitatorURL, cfg.ResourceURL, cfg.RPCURL,
+			cfg.USDCAddress, cfg.PayToAddress, cfg.ClientPrivateKey, "eip3009",
+		)
+		if err != nil {
+			m.execErr = err.Error()
+		} else {
+			m.executor = exec
+		}
+	} else {
+		m.execErr = "Configuration missing — set CLIENT_PRIVATE_KEY, RESOURCE_URL, FACILITATOR_URL in .env"
+	}
+
+	return m
+}
+
+func (m *EIP3009FlowModel) Init() tea.Cmd {
+	return m.spinner.Tick
 }
 
 func (m *EIP3009FlowModel) Update(msg tea.Msg) tea.Cmd {
-	if msg, ok := msg.(tea.KeyMsg); ok {
-		switch msg.String() {
-		case "n":
-			m.sm.next()
-		case "p":
-			m.sm.prev()
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if !m.running {
+			switch msg.String() {
+			case "n":
+				return m.executeCurrentStep()
+			case "p":
+				if m.sm.flow.CurrentStep > 0 {
+					m.sm.prev()
+				}
+			}
 		}
+	case stepResultMsg:
+		m.running = false
+		m.results[msg.step] = msg.data
+		m.sm.markStepDone()
+		return nil
+	case stepErrorMsg:
+		m.running = false
+		m.errors[msg.step] = msg.err.Error()
+		m.sm.markStepError()
+		return nil
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return cmd
 	}
 	return nil
 }
 
+func (m *EIP3009FlowModel) executeCurrentStep() tea.Cmd {
+	if m.executor == nil {
+		return nil
+	}
+	step := m.sm.flow.CurrentStep
+	if step >= m.sm.flow.TotalSteps {
+		return nil
+	}
+	m.running = true
+	m.sm.markStepRunning()
+	executor := m.executor
+	return func() tea.Msg {
+		result, err := executor.RunStep(context.Background(), step)
+		if err != nil {
+			return stepErrorMsg{step: step, err: err}
+		}
+		return stepResultMsg{step: step, data: result}
+	}
+}
+
 func (m *EIP3009FlowModel) View() string {
-	return m.sm.view(m.width)
+	view := m.sm.view(m.width)
+
+	// Show current step result or spinner
+	step := m.sm.flow.CurrentStep
+	if step >= m.sm.flow.TotalSteps {
+		step = m.sm.flow.TotalSteps - 1
+	}
+
+	var detail string
+	if m.running {
+		detail = "    " + m.spinner.View() + " Executing..."
+	} else if m.errors[step] != "" {
+		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorError).Render("Error: "+m.errors[step])
+	} else if m.results[step] != "" {
+		detail = lipgloss.NewStyle().MarginLeft(4).Width(m.width - 8).Render(m.results[step])
+	} else if m.execErr != "" {
+		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorError).Render(m.execErr)
+	} else {
+		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorMuted).Render("Press n to execute this step")
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, view, "", detail)
 }

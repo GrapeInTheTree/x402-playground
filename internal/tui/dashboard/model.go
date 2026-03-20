@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -26,35 +27,39 @@ type Model struct {
 	err      error
 	cfg      *config.ExplorerConfig
 	wallets  []demo.WalletInfo
+	spinner  spinner.Model
 	width    int
 	height   int
 }
 
 func New(width, height int, cfg *config.ExplorerConfig) *Model {
 	wallets := []demo.WalletInfo{}
-
-	// We'll add wallets when we know addresses
 	if cfg != nil && cfg.PayToAddress != "" {
 		wallets = append(wallets, demo.WalletInfo{Name: "PAY_TO", Address: cfg.PayToAddress})
 	}
+
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(tui.ColorAccent)
 
 	return &Model{
 		loading: true,
 		cfg:     cfg,
 		wallets: wallets,
+		spinner: s,
 		width:   width,
 		height:  height,
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.fetchBalances()
+	return tea.Batch(m.fetchBalances(), m.spinner.Tick)
 }
 
 func (m *Model) fetchBalances() tea.Cmd {
 	if m.cfg == nil || m.cfg.RPCURL == "" || len(m.wallets) == 0 {
 		return func() tea.Msg {
-			return balancesMsg{err: fmt.Errorf("configuration incomplete — set RPC_URL, CLIENT_PRIVATE_KEY, PAY_TO_ADDRESS")}
+			return balancesMsg{err: fmt.Errorf("configuration incomplete — set RPC_URL, PAY_TO_ADDRESS in .env")}
 		}
 	}
 
@@ -86,7 +91,14 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 		case "r":
 			m.loading = true
 			m.err = nil
-			return m, m.fetchBalances()
+			return m, tea.Batch(m.fetchBalances(), m.spinner.Tick)
+		}
+
+	case spinner.TickMsg:
+		if m.loading {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
 		}
 	}
 
@@ -108,7 +120,7 @@ func (m *Model) View() string {
 	var content string
 
 	if m.loading {
-		content = tui.MutedStyle.MarginLeft(4).Render("Loading balances from chain...")
+		content = lipgloss.NewStyle().MarginLeft(4).Render(m.spinner.View() + " Loading balances from chain...")
 	} else if m.err != nil {
 		content = tui.ErrorStyle.MarginLeft(4).Render(fmt.Sprintf("Error: %v", m.err))
 	} else if len(m.balances) == 0 {
@@ -124,7 +136,7 @@ func (m *Model) View() string {
 	networkInfo := tui.MutedStyle.MarginLeft(4).Render(
 		fmt.Sprintf("Network: %s  |  USDC: %s", network, m.usdcAddr()))
 
-	hints := components.StatusBar{Width: m.width}.View("  r refresh  esc back")
+	hints := components.StatusBar{Width: m.width}.View("  r refresh  ? help  esc back")
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		"",

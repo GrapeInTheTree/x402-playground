@@ -82,7 +82,7 @@ func (m *Model) View() string {
 	menu := m.menu.View()
 
 	hints := components.StatusBar{Width: m.width}.View(
-		"  ↑/↓ navigate  enter select  q quit",
+		"  ↑/↓ navigate  enter select  ? help  q quit",
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left,

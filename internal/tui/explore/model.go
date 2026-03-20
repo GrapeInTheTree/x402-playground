@@ -125,19 +125,19 @@ func (m *Model) View() string {
 	switch m.sub {
 	case subPageMenu:
 		content = m.menu.View()
-		hints = "  ↑/↓ navigate  enter select  esc back"
+		hints = "  ↑/↓ navigate  enter select  ? help  esc back"
 	case subPageHeader:
 		content = m.header.View()
-		hints = "  ↑/↓ navigate fields  esc back to menu"
+		hints = "  ↑/↓ navigate fields  ? help  esc back to menu"
 	case subPageTypedData:
 		content = m.typed.View()
-		hints = "  ↑/↓ navigate fields  esc back to menu"
+		hints = "  ↑/↓ navigate fields  ? help  esc back to menu"
 	case subPageCompare:
 		content = m.compare.View()
-		hints = "  esc back to menu"
+		hints = "  ? help  esc back to menu"
 	case subPageOnChain:
 		content = m.onchain.View()
-		hints = "  esc back to menu"
+		hints = "  ? help  esc back to menu"
 	}
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)

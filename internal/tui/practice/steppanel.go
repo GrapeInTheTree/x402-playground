@@ -96,6 +96,52 @@ func (sm *stepManager) markRunning(s *stepState) {
 	}
 }
 
+func (sm *stepManager) markStepDone() {
+	if sm.flow.CurrentStep >= sm.flow.TotalSteps {
+		return
+	}
+	s := &sm.steps[sm.flow.CurrentStep]
+	s.client.Status = "done"
+	s.resource.Status = "done"
+	s.facilitator.Status = "done"
+	sm.flow.CurrentStep++
+	if sm.flow.CurrentStep < sm.flow.TotalSteps {
+		sm.markRunning(&sm.steps[sm.flow.CurrentStep])
+	}
+}
+
+func (sm *stepManager) markStepRunning() {
+	if sm.flow.CurrentStep >= sm.flow.TotalSteps {
+		return
+	}
+	s := &sm.steps[sm.flow.CurrentStep]
+	if s.client.Action != inactiveAction {
+		s.client.Status = "running"
+	}
+	if s.resource.Action != inactiveAction {
+		s.resource.Status = "running"
+	}
+	if s.facilitator.Action != inactiveAction {
+		s.facilitator.Status = "running"
+	}
+}
+
+func (sm *stepManager) markStepError() {
+	if sm.flow.CurrentStep >= sm.flow.TotalSteps {
+		return
+	}
+	s := &sm.steps[sm.flow.CurrentStep]
+	if s.client.Action != inactiveAction {
+		s.client.Status = "error"
+	}
+	if s.resource.Action != inactiveAction {
+		s.resource.Status = "error"
+	}
+	if s.facilitator.Action != inactiveAction {
+		s.facilitator.Status = "error"
+	}
+}
+
 func (sm *stepManager) view(width int) string {
 	clientSteps := make([]StepInfo, 10)
 	resourceSteps := make([]StepInfo, 10)
