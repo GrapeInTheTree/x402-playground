@@ -157,10 +157,11 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // innerSize returns the content area size inside the app frame.
-// Frame: 2 border + 2 padding horizontal, header + status + border vertical.
 func (m RootModel) innerSize() (int, int) {
-	iw := max(m.windowWidth-6, 20)  // 2 border + 4 padding
-	ih := max(m.windowHeight-6, 10) // header(1) + border(2) + status(1) + padding(2)
+	// Border=2, padding=2 each side horizontally = -4 total
+	// Header=1, status=1, border=2, padding=0 vertically = -4 total
+	iw := max(m.windowWidth-4, 20)
+	ih := max(m.windowHeight-4, 10)
 	return iw, ih
 }
 
@@ -179,13 +180,11 @@ func (m RootModel) View() string {
 			Render(fmt.Sprintf("Terminal too small: %dx%d\nMinimum: %dx%d\n\nPlease resize.", w, h, minTermWidth, minTermHeight))
 	}
 
-	// Help overlay
 	if m.showHelp {
 		helpView := renderHelpOverlay(w)
 		return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, helpView)
 	}
 
-	// Get page content
 	var pageContent string
 	if sub, ok := m.pages[m.currentPage]; ok {
 		pageContent = sub.View()
@@ -193,63 +192,45 @@ func (m RootModel) View() string {
 		pageContent = "Initializing..."
 	}
 
-	// === Build the consistent app frame ===
+	// Frame inner width = terminal width - 2 (left/right border chars)
+	frameW := w - 2
 
-	innerW := max(w-4, 20) // border takes 2 chars each side
-
-	// Header bar: app name (left) + current page tab (right)
-	appName := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Render(" x402 Playground")
-
-	pageTab := lipgloss.NewStyle().
-		Foreground(ColorAccent).
-		Bold(true).
-		Render(pageLabel(m.currentPage) + " ")
-
-	spacerW := max(innerW-lipgloss.Width(appName)-lipgloss.Width(pageTab), 0)
-	headerBar := appName + strings.Repeat(" ", spacerW) + pageTab
-
-	headerStyle := lipgloss.NewStyle().
+	// Header: "x402 Playground" (left) ──── "PageName" (right)
+	appName := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render("x402 Playground")
+	pageTab := lipgloss.NewStyle().Bold(true).Foreground(ColorAccent).Render(pageLabel(m.currentPage))
+	gap := max(frameW-lipgloss.Width(appName)-lipgloss.Width(pageTab)-4, 1) // 4 for padding
+	headerText := " " + appName + strings.Repeat(" ", gap) + pageTab + " "
+	header := lipgloss.NewStyle().
 		Background(ColorSubtle).
-		Width(innerW).
-		Padding(0, 1)
+		Foreground(lipgloss.Color("#D1D5DB")).
+		Width(frameW).
+		Render(headerText)
 
-	header := headerStyle.Render(headerBar)
-
-	// Status bar (inside the frame, at bottom)
+	// Status bar
 	hints := m.statusHints()
-	statusStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#9CA3AF")).
+	status := lipgloss.NewStyle().
 		Background(ColorSubtle).
-		Width(innerW).
-		Padding(0, 1)
-	status := statusStyle.Render(" " + hints)
+		Foreground(lipgloss.Color("#9CA3AF")).
+		Width(frameW).
+		Render(" " + hints)
 
-	// Content area: fill remaining height
-	headerH := lipgloss.Height(header)
-	statusH := lipgloss.Height(status)
-	borderH := 2 // top + bottom border
-	contentH := max(h-headerH-statusH-borderH, 1)
+	// Content: fill remaining height between header and status
+	usedH := lipgloss.Height(header) + lipgloss.Height(status) + 2 // +2 for border top/bottom
+	contentH := max(h-usedH, 1)
 
 	content := lipgloss.NewStyle().
-		Width(innerW).
+		Width(frameW).
 		Height(contentH).
-		Padding(0, 1).
+		PaddingLeft(1).
 		Render(pageContent)
 
-	// Assemble inside frame
-	inside := lipgloss.JoinVertical(lipgloss.Top, header, content, status)
+	// Combine and wrap in border
+	inner := header + "\n" + content + "\n" + status
 
-	// Wrap in border
-	frame := lipgloss.NewStyle().
+	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorBorder).
-		Width(w - 2).
-		Render(inside)
-
-	return frame
+		Render(inner)
 }
 
 // statusHints returns context-sensitive keyboard hints for the current page.
