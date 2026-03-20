@@ -15,14 +15,17 @@ type CompareModel struct {
 	height int
 }
 
+// NewCompareModel creates a new side-by-side comparison model.
 func NewCompareModel(width, height int) *CompareModel {
 	return &CompareModel{width: width, height: height}
 }
 
+// Update is a no-op since the compare view is static.
 func (m *CompareModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// SetSize updates the model dimensions.
 func (m *CompareModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
@@ -30,6 +33,7 @@ func (m *CompareModel) SetSize(width, height int) {
 
 const minCompareColWidth = 30
 
+// View renders the EIP-3009 vs Permit2 side-by-side comparison.
 func (m *CompareModel) View() string {
 	colWidth := max((m.width-10)/2, minCompareColWidth)
 

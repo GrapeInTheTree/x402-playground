@@ -36,6 +36,7 @@ type OnChainModel struct {
 	height    int
 }
 
+// NewOnChainModel creates a new on-chain state viewer.
 func NewOnChainModel(width, height int) *OnChainModel {
 	return &OnChainModel{
 		width:  width,
@@ -69,6 +70,7 @@ func (m *OnChainModel) FetchBalances() tea.Cmd {
 	}
 }
 
+// Update handles balance and allowance messages.
 func (m *OnChainModel) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case balancesMsg:
@@ -84,11 +86,13 @@ func (m *OnChainModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// SetSize updates the model dimensions.
 func (m *OnChainModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
+// View renders the on-chain state including balances and allowances.
 func (m *OnChainModel) View() string {
 	title := lipgloss.NewStyle().
 		Foreground(tui.ColorSecondary).

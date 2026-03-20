@@ -1,5 +1,6 @@
 package learn
 
+// ContentFacilitator returns the markdown content explaining the facilitator role and gas sponsorship.
 func ContentFacilitator() string {
 	return `# Facilitator Role & Gas Sponsorship
 

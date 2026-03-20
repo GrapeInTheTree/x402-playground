@@ -1,5 +1,6 @@
 package learn
 
+// ContentPermit2 returns the markdown content explaining Permit2 universal ERC-20 payments.
 func ContentPermit2() string {
 	return `# Permit2: Universal ERC-20 Payments
 

@@ -15,6 +15,7 @@ type Panel struct {
 	Active  bool
 }
 
+// View renders the bordered panel with title, content, and optional status.
 func (p Panel) View() string {
 	style := tui.BorderStyle.Width(p.Width - 4)
 	if p.Active {

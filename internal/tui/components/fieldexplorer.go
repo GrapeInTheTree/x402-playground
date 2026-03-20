@@ -23,22 +23,26 @@ type FieldExplorer struct {
 	Width  int
 }
 
+// NewFieldExplorer creates a new field explorer with the given fields.
 func NewFieldExplorer(fields []Field) FieldExplorer {
 	return FieldExplorer{Fields: fields, Width: 60}
 }
 
+// Up moves the cursor up one field.
 func (f *FieldExplorer) Up() {
 	if f.Cursor > 0 {
 		f.Cursor--
 	}
 }
 
+// Down moves the cursor down one field.
 func (f *FieldExplorer) Down() {
 	if f.Cursor < len(f.Fields)-1 {
 		f.Cursor++
 	}
 }
 
+// View renders the field list with the selected field's description.
 func (f FieldExplorer) View() string {
 	var b strings.Builder
 

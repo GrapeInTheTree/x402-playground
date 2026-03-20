@@ -12,6 +12,7 @@ type TriPanel struct {
 
 const minTriPanelColWidth = 20
 
+// View renders the three panels side by side.
 func (t TriPanel) View() string {
 	colWidth := max((t.Width-6)/3, minTriPanelColWidth)
 

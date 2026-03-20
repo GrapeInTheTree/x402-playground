@@ -8,6 +8,7 @@ import (
 	"github.com/GrapeInTheTree/x402-playground/internal/tui/components"
 )
 
+// Model is the home page TUI model with a navigation menu.
 type Model struct {
 	menu   components.Menu
 	width  int
@@ -28,6 +29,7 @@ var pageMap = []tui.Page{
 	tui.PageDashboard,
 }
 
+// New creates a new home page model with the given dimensions.
 func New(width, height int) *Model {
 	return &Model{
 		menu:   components.NewMenu(menuItems),
@@ -36,10 +38,12 @@ func New(width, height int) *Model {
 	}
 }
 
+// Init implements the SubModel interface.
 func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles key events for menu navigation.
 func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -60,12 +64,14 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	return m, nil
 }
 
+// SetSize updates the model dimensions.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.menu.Width = width
 }
 
+// View renders the home page with title and menu.
 func (m *Model) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).

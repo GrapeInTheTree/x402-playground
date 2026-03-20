@@ -21,6 +21,7 @@ type balancesMsg struct {
 	err      error
 }
 
+// Model is the dashboard page TUI model showing wallet balances.
 type Model struct {
 	balances []demo.WalletBalance
 	loading  bool
@@ -32,6 +33,7 @@ type Model struct {
 	height   int
 }
 
+// New creates a new dashboard model with the given dimensions and configuration.
 func New(width, height int, cfg *config.ExplorerConfig) *Model {
 	wallets := []demo.WalletInfo{}
 	if cfg != nil && cfg.PayToAddress != "" {
@@ -52,6 +54,7 @@ func New(width, height int, cfg *config.ExplorerConfig) *Model {
 	}
 }
 
+// Init starts the initial balance fetch and spinner.
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(m.fetchBalances(), m.spinner.Tick)
 }
@@ -77,6 +80,7 @@ func (m *Model) fetchBalances() tea.Cmd {
 	}
 }
 
+// Update handles balance results, key events, and spinner ticks.
 func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case balancesMsg:
@@ -105,11 +109,13 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	return m, nil
 }
 
+// SetSize updates the model dimensions.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
+// View renders the dashboard with network info and wallet balances.
 func (m *Model) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).

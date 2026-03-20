@@ -11,6 +11,7 @@ type StatusBar struct {
 	Width int
 }
 
+// View renders the status bar with the given hint text.
 func (s StatusBar) View(hints string) string {
 	style := lipgloss.NewStyle().
 		Foreground(tui.ColorMuted).

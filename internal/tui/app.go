@@ -45,10 +45,12 @@ type RootModel struct {
 	showHelp     bool
 }
 
+// NewRootModel creates a new root model starting at the home page.
 func NewRootModel(factories map[Page]SubModelFactory) RootModel {
 	return NewRootModelWithStart(factories, PageHome)
 }
 
+// NewRootModelWithStart creates a new root model starting at the specified page.
 func NewRootModelWithStart(factories map[Page]SubModelFactory, startPage Page) RootModel {
 	return RootModel{
 		currentPage: startPage,
@@ -57,10 +59,12 @@ func NewRootModelWithStart(factories map[Page]SubModelFactory, startPage Page) R
 	}
 }
 
+// Init implements the tea.Model interface.
 func (m RootModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles window resize, navigation, help toggle, and delegates to the active page.
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -129,6 +133,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the current page or the help overlay.
 func (m RootModel) View() string {
 	if m.windowWidth == 0 {
 		return "Loading..."

@@ -11,6 +11,7 @@ import (
 	"github.com/GrapeInTheTree/x402-playground/pkg/health"
 )
 
+// WeatherHandler returns random weather data as a demo API endpoint.
 func WeatherHandler(c *gin.Context) {
 	cities := []string{"Seoul", "Tokyo", "New York", "London", "Berlin", "Sydney"}
 	conditions := []string{"Sunny", "Cloudy", "Rainy", "Snowy", "Windy", "Foggy"}
@@ -25,6 +26,7 @@ func WeatherHandler(c *gin.Context) {
 	})
 }
 
+// JokeHandler returns a random programming joke as a demo API endpoint.
 func JokeHandler(c *gin.Context) {
 	jokes := []struct {
 		Setup     string `json:"setup"`
@@ -41,6 +43,7 @@ func JokeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, joke)
 }
 
+// PremiumDataHandler returns mock premium analytics data as a demo API endpoint.
 func PremiumDataHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"report": "Premium Analytics Report",
@@ -54,6 +57,7 @@ func PremiumDataHandler(c *gin.Context) {
 	})
 }
 
+// HealthHandler returns a Gin handler that reports service health status.
 func HealthHandler(service, network string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, health.Response{

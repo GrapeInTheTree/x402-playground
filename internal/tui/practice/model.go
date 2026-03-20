@@ -18,6 +18,7 @@ const (
 	subPageSideBySide
 )
 
+// Model is the practice page TUI model with payment flow sub-pages.
 type Model struct {
 	menu        components.Menu
 	sub         subPage
@@ -35,6 +36,7 @@ var menuItems = []components.MenuItem{
 	{Title: "Side-by-Side Comparison", Description: "EIP-3009과 Permit2 동시 실행 비교", Icon: "⚖️"},
 }
 
+// New creates a new practice page model with the given dimensions and configuration.
 func New(width, height int, cfg *config.ExplorerConfig) *Model {
 	return &Model{
 		menu:   components.NewMenu(menuItems),
@@ -62,6 +64,7 @@ func NewWithFlow(width, height int, cfg *config.ExplorerConfig, flow string) *Mo
 	return m
 }
 
+// Init starts the spinner for any pre-selected sub-flow.
 func (m *Model) Init() tea.Cmd {
 	// If a sub-flow was pre-selected (via NewWithFlow), start its spinner
 	switch m.sub {
@@ -77,6 +80,7 @@ func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles key events for menu navigation and delegates to the active sub-flow.
 func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -134,11 +138,13 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	return m, cmd
 }
 
+// SetSize updates the model dimensions.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
+// View renders the current sub-page or the practice menu.
 func (m *Model) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).

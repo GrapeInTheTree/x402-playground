@@ -36,6 +36,7 @@ type EIP3009FlowModel struct {
 	cfg      *config.ExplorerConfig
 }
 
+// NewEIP3009FlowModel creates a new EIP-3009 flow model with live executor.
 func NewEIP3009FlowModel(width, height int, cfg *config.ExplorerConfig) *EIP3009FlowModel {
 	descriptions := []stepDesc{
 		{"지갑 주소 확인", "—", "—"},
@@ -80,10 +81,12 @@ func NewEIP3009FlowModel(width, height int, cfg *config.ExplorerConfig) *EIP3009
 	return m
 }
 
+// Init starts the spinner tick.
 func (m *EIP3009FlowModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
+// Update handles key events, step results, and spinner ticks.
 func (m *EIP3009FlowModel) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -135,6 +138,7 @@ func (m *EIP3009FlowModel) executeCurrentStep() tea.Cmd {
 	}
 }
 
+// View renders the EIP-3009 flow panels and current step detail.
 func (m *EIP3009FlowModel) View() string {
 	view := m.sm.view(m.width)
 

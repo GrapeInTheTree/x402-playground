@@ -1,5 +1,6 @@
 package learn
 
+// ContentEIP712 returns the markdown content explaining EIP-712 typed structured data signing.
 func ContentEIP712() string {
 	return `# EIP-712: Typed Structured Data Signing
 

@@ -63,10 +63,12 @@ func (s *FacilitatorSigner) ecdsaKey() *[32]byte {
 	return s.privateKey
 }
 
+// GetAddresses returns the list of addresses controlled by this signer.
 func (s *FacilitatorSigner) GetAddresses() []string {
 	return []string{s.address.Hex()}
 }
 
+// ReadContract calls a read-only function on a smart contract and returns the result.
 func (s *FacilitatorSigner) ReadContract(ctx context.Context, contractAddress string, abiBytes []byte, functionName string, args ...interface{}) (interface{}, error) {
 	contractABI, err := abi.JSON(strings.NewReader(string(abiBytes)))
 	if err != nil {
@@ -98,6 +100,7 @@ func (s *FacilitatorSigner) ReadContract(ctx context.Context, contractAddress st
 	return outputs, nil
 }
 
+// VerifyTypedData recovers the signer from an EIP-712 typed data signature and checks it matches the expected address.
 func (s *FacilitatorSigner) VerifyTypedData(
 	ctx context.Context,
 	address string,
@@ -168,6 +171,7 @@ func (s *FacilitatorSigner) VerifyTypedData(
 	return recoveredAddr == expectedAddr, nil
 }
 
+// WriteContract calls a state-changing function on a smart contract and returns the transaction hash.
 func (s *FacilitatorSigner) WriteContract(ctx context.Context, contractAddress string, abiBytes []byte, functionName string, args ...interface{}) (string, error) {
 	contractABI, err := abi.JSON(strings.NewReader(string(abiBytes)))
 	if err != nil {
@@ -182,6 +186,7 @@ func (s *FacilitatorSigner) WriteContract(ctx context.Context, contractAddress s
 	return s.sendRawTx(ctx, contractAddress, data)
 }
 
+// SendTransaction sends a raw transaction to the given address and returns the transaction hash.
 func (s *FacilitatorSigner) SendTransaction(ctx context.Context, to string, data []byte) (string, error) {
 	return s.sendRawTx(ctx, to, data)
 }
@@ -259,6 +264,7 @@ func (s *FacilitatorSigner) sendRawTx(ctx context.Context, to string, data []byt
 	return signedTx.Hash().Hex(), nil
 }
 
+// WaitForTransactionReceipt polls for a transaction receipt until it is mined or a timeout is reached.
 func (s *FacilitatorSigner) WaitForTransactionReceipt(ctx context.Context, txHash string) (*evm.TransactionReceipt, error) {
 	hash := common.HexToHash(txHash)
 
@@ -285,6 +291,7 @@ func (s *FacilitatorSigner) WaitForTransactionReceipt(ctx context.Context, txHas
 	return nil, fmt.Errorf("timeout waiting for transaction receipt: %s", txHash)
 }
 
+// GetBalance returns the native or ERC-20 token balance for the given address.
 func (s *FacilitatorSigner) GetBalance(ctx context.Context, address string, tokenAddress string) (*big.Int, error) {
 	if tokenAddress == "" || tokenAddress == "0x0000000000000000000000000000000000000000" {
 		balance, err := s.client.BalanceAt(ctx, common.HexToAddress(address), nil)
@@ -306,10 +313,12 @@ func (s *FacilitatorSigner) GetBalance(ctx context.Context, address string, toke
 	return nil, fmt.Errorf("unexpected balance type: %T", result)
 }
 
+// GetChainID returns the chain ID from the connected RPC node.
 func (s *FacilitatorSigner) GetChainID(ctx context.Context) (*big.Int, error) {
 	return s.client.ChainID(ctx)
 }
 
+// GetCode returns the contract bytecode deployed at the given address.
 func (s *FacilitatorSigner) GetCode(ctx context.Context, address string) ([]byte, error) {
 	return s.client.CodeAt(ctx, common.HexToAddress(address), nil)
 }

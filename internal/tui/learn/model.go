@@ -18,6 +18,7 @@ const (
 	viewContent
 )
 
+// Model is the learn page TUI model with topic list and content viewer.
 type Model struct {
 	topics   []Topic
 	menu     components.Menu
@@ -27,6 +28,7 @@ type Model struct {
 	height   int
 }
 
+// New creates a new learn page model with the given dimensions.
 func New(width, height int) *Model {
 	topics := AllTopics()
 	items := make([]components.MenuItem, len(topics))
@@ -51,10 +53,12 @@ func New(width, height int) *Model {
 	}
 }
 
+// Init implements the SubModel interface.
 func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles key events for topic navigation and content scrolling.
 func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -103,6 +107,7 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 	return m, nil
 }
 
+// SetSize updates the model and viewport dimensions.
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
@@ -111,6 +116,7 @@ func (m *Model) SetSize(width, height int) {
 	m.menu.Width = width
 }
 
+// View renders the topic list or content view depending on the current state.
 func (m *Model) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).

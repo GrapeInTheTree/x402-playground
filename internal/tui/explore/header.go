@@ -15,6 +15,7 @@ type HeaderModel struct {
 	height   int
 }
 
+// NewHeaderModel creates a new header explorer with PAYMENT-REQUIRED field definitions.
 func NewHeaderModel(width, height int) *HeaderModel {
 	fields := []components.Field{
 		{Name: "scheme", Value: "exact", Description: "결제 방식. 'exact'는 정확한 금액 결제를 의미. 현재 x402에서 유일하게 지원되는 scheme."},
@@ -35,6 +36,7 @@ func NewHeaderModel(width, height int) *HeaderModel {
 	}
 }
 
+// Update handles key events for field navigation.
 func (m *HeaderModel) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
@@ -47,12 +49,14 @@ func (m *HeaderModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// SetSize updates the model dimensions.
 func (m *HeaderModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.explorer.Width = width
 }
 
+// View renders the header field explorer with descriptions.
 func (m *HeaderModel) View() string {
 	title := lipgloss.NewStyle().
 		Foreground(tui.ColorSecondary).

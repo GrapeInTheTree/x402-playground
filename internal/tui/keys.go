@@ -2,6 +2,7 @@ package tui
 
 import "github.com/charmbracelet/bubbles/key"
 
+// KeyMap defines the keyboard bindings used throughout the TUI.
 type KeyMap struct {
 	Up     key.Binding
 	Down   key.Binding
@@ -16,6 +17,7 @@ type KeyMap struct {
 	Prev   key.Binding
 }
 
+// Keys is the default set of keyboard bindings for the TUI.
 var Keys = KeyMap{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),

@@ -26,6 +26,7 @@ type Permit2FlowModel struct {
 	cfg      *config.ExplorerConfig
 }
 
+// NewPermit2FlowModel creates a new Permit2 flow model with live executor.
 func NewPermit2FlowModel(width, height int, cfg *config.ExplorerConfig) *Permit2FlowModel {
 	descriptions := []stepDesc{
 		{"지갑 주소 + Permit2 approve 확인", "—", "—"},
@@ -69,10 +70,12 @@ func NewPermit2FlowModel(width, height int, cfg *config.ExplorerConfig) *Permit2
 	return m
 }
 
+// Init starts the spinner tick.
 func (m *Permit2FlowModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
+// Update handles key events, step results, and spinner ticks.
 func (m *Permit2FlowModel) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -124,6 +127,7 @@ func (m *Permit2FlowModel) executeCurrentStep() tea.Cmd {
 	}
 }
 
+// View renders the Permit2 flow panels and current step detail.
 func (m *Permit2FlowModel) View() string {
 	view := m.sm.view(m.width)
 

@@ -1,5 +1,6 @@
 package learn
 
+// ContentProtocol returns the markdown content explaining the x402 protocol overview.
 func ContentProtocol() string {
 	return `# What is x402?
 

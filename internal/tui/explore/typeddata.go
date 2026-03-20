@@ -16,6 +16,7 @@ type TypedDataModel struct {
 	height   int
 }
 
+// NewTypedDataModel creates a new EIP-712 typed data explorer.
 func NewTypedDataModel(width, height int) *TypedDataModel {
 	return &TypedDataModel{
 		explorer: components.NewFieldExplorer(eip3009Fields()),
@@ -54,6 +55,7 @@ func permit2Fields() []components.Field {
 	}
 }
 
+// Update handles key events for field navigation and EIP-3009/Permit2 switching.
 func (m *TypedDataModel) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
@@ -73,12 +75,14 @@ func (m *TypedDataModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// SetSize updates the model dimensions.
 func (m *TypedDataModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.explorer.Width = width
 }
 
+// View renders the EIP-712 typed data field explorer.
 func (m *TypedDataModel) View() string {
 	mode := "EIP-3009 (USDC Direct)"
 	if m.permit2 {

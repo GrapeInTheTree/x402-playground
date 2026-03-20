@@ -47,6 +47,7 @@ type ClientConfig struct {
 	LogLevel            slog.Level
 }
 
+// LoadFacilitator loads facilitator server configuration from environment variables.
 func LoadFacilitator() (*FacilitatorConfig, error) {
 	cfg := &FacilitatorConfig{
 		PrivateKey:          os.Getenv("FACILITATOR_PRIVATE_KEY"),
@@ -67,6 +68,7 @@ func LoadFacilitator() (*FacilitatorConfig, error) {
 	return cfg, nil
 }
 
+// LoadResource loads resource server configuration from environment variables.
 func LoadResource() (*ResourceConfig, error) {
 	cfg := &ResourceConfig{
 		FacilitatorURL:      os.Getenv("FACILITATOR_URL"),
@@ -91,6 +93,7 @@ func LoadResource() (*ResourceConfig, error) {
 	return cfg, nil
 }
 
+// LoadClient loads client CLI configuration from environment variables.
 func LoadClient() (*ClientConfig, error) {
 	cfg := &ClientConfig{
 		PrivateKey:          os.Getenv("CLIENT_PRIVATE_KEY"),
@@ -129,6 +132,7 @@ type ExplorerConfig struct {
 	LogLevel            slog.Level
 }
 
+// LoadExplorer loads TUI explorer configuration from environment variables.
 func LoadExplorer() (*ExplorerConfig, error) {
 	cfg := &ExplorerConfig{
 		ClientPrivateKey:    os.Getenv("CLIENT_PRIVATE_KEY"),

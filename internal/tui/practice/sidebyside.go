@@ -23,6 +23,7 @@ type SideBySideModel struct {
 	cfg         *config.ExplorerConfig
 }
 
+// NewSideBySideModel creates a new side-by-side comparison model.
 func NewSideBySideModel(width, height int, cfg *config.ExplorerConfig) *SideBySideModel {
 	return &SideBySideModel{
 		totalSteps: 10,
@@ -32,6 +33,7 @@ func NewSideBySideModel(width, height int, cfg *config.ExplorerConfig) *SideBySi
 	}
 }
 
+// Update handles key events for stepping through both flows simultaneously.
 func (m *SideBySideModel) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
@@ -54,6 +56,7 @@ func (m *SideBySideModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// View renders the EIP-3009 and Permit2 flows side by side.
 func (m *SideBySideModel) View() string {
 	const minColWidth = 30
 	colWidth := max((m.width-6)/2, minColWidth)

@@ -1,5 +1,6 @@
 package learn
 
+// ContentEIP3009 returns the markdown content explaining EIP-3009 transferWithAuthorization.
 func ContentEIP3009() string {
 	return `# EIP-3009: transferWithAuthorization
 

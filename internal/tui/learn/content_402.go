@@ -1,5 +1,6 @@
 package learn
 
+// Content402 returns the markdown content explaining HTTP 402 and payment headers.
 func Content402() string {
 	return `# HTTP 402 & Payment Headers
 

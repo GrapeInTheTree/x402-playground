@@ -15,6 +15,7 @@ type Progress struct {
 	Current int
 }
 
+// View renders the progress indicator as filled and empty circles.
 func (p Progress) View() string {
 	var b strings.Builder
 

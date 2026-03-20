@@ -23,26 +23,31 @@ type Menu struct {
 	Width    int
 }
 
+// NewMenu creates a new menu with the given items.
 func NewMenu(items []MenuItem) Menu {
 	return Menu{Items: items, Width: 60}
 }
 
+// Up moves the cursor up one item.
 func (m *Menu) Up() {
 	if m.Cursor > 0 {
 		m.Cursor--
 	}
 }
 
+// Down moves the cursor down one item.
 func (m *Menu) Down() {
 	if m.Cursor < len(m.Items)-1 {
 		m.Cursor++
 	}
 }
 
+// Selected returns the index of the currently selected item.
 func (m *Menu) Selected() int {
 	return m.Cursor
 }
 
+// View renders the menu with cursor highlighting.
 func (m Menu) View() string {
 	var b strings.Builder
 
