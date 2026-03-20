@@ -118,10 +118,11 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the topic list or content view depending on the current state.
 func (m *Model) View() string {
+	contentWidth := min(m.width-4, 100)
+
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
-		MarginLeft(2).
 		Render("Learn — x402 Protocol")
 
 	var content string
@@ -134,7 +135,6 @@ func (m *Model) View() string {
 		scrollPct := fmt.Sprintf("%d%%", int(m.viewport.ScrollPercent()*100))
 		title := lipgloss.NewStyle().
 			Foreground(tui.ColorSecondary).
-			MarginLeft(4).
 			Render(m.topics[m.menu.Selected()].Title + " " +
 				tui.MutedStyle.Render("["+scrollPct+"]"))
 		content = title + "\n" + m.viewport.View()
@@ -143,11 +143,19 @@ func (m *Model) View() string {
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)
 
+	body := lipgloss.NewStyle().Width(contentWidth).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			"",
+			header,
+			"",
+			content,
+		),
+	)
+
+	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
+
 	return lipgloss.JoinVertical(lipgloss.Left,
-		"",
-		header,
-		"",
-		content,
+		centered,
 		statusBar,
 	)
 }

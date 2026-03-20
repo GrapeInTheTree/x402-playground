@@ -61,11 +61,9 @@ func (m *HeaderModel) View() string {
 	title := lipgloss.NewStyle().
 		Foreground(tui.ColorSecondary).
 		Bold(true).
-		MarginLeft(4).
 		Render("PAYMENT-REQUIRED Header Fields")
 
 	subtitle := tui.MutedStyle.
-		MarginLeft(4).
 		Render("↑/↓로 필드 선택 — 각 필드의 역할과 의미를 확인하세요")
 
 	return lipgloss.JoinVertical(lipgloss.Left,

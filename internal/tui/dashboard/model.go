@@ -117,20 +117,21 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the dashboard with network info and wallet balances.
 func (m *Model) View() string {
+	contentWidth := min(m.width-4, 80)
+
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
-		MarginLeft(2).
 		Render("Dashboard — Wallet Balances")
 
 	var content string
 
 	if m.loading {
-		content = lipgloss.NewStyle().MarginLeft(4).Render(m.spinner.View() + " Loading balances from chain...")
+		content = m.spinner.View() + " Loading balances from chain..."
 	} else if m.err != nil {
-		content = tui.ErrorStyle.MarginLeft(4).Render(fmt.Sprintf("Error: %v", m.err))
+		content = tui.ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
 	} else if len(m.balances) == 0 {
-		content = tui.MutedStyle.MarginLeft(4).Render("No wallet data available.")
+		content = tui.MutedStyle.Render("No wallet data available.")
 	} else {
 		content = m.renderBalances()
 	}
@@ -139,19 +140,27 @@ func (m *Model) View() string {
 	if m.cfg != nil {
 		network = m.cfg.Network
 	}
-	networkInfo := tui.MutedStyle.MarginLeft(4).Render(
+	networkInfo := tui.MutedStyle.Render(
 		fmt.Sprintf("Network: %s  |  USDC: %s", network, m.usdcAddr()))
 
 	hints := components.StatusBar{Width: m.width}.View("  r refresh  ? help  esc back")
 
+	body := lipgloss.NewStyle().Width(contentWidth).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			"",
+			header,
+			"",
+			networkInfo,
+			"",
+			content,
+			"",
+		),
+	)
+
+	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
+
 	return lipgloss.JoinVertical(lipgloss.Left,
-		"",
-		header,
-		"",
-		networkInfo,
-		"",
-		content,
-		"",
+		centered,
 		hints,
 	)
 }
@@ -182,14 +191,14 @@ func (m *Model) renderBalances() string {
 			addr = addr[:10] + "..." + addr[len(addr)-4:]
 		}
 
-		b.WriteString(fmt.Sprintf("    %s %s\n",
+		b.WriteString(fmt.Sprintf("%s %s\n",
 			nameStyle.Render(bal.Wallet.Name),
 			addrStyle.Render(addr)))
 
 		ethVal := lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")).Render(bal.ETH)
 		usdcVal := lipgloss.NewStyle().Foreground(tui.ColorSuccess).Bold(true).Render(bal.USDC)
 
-		b.WriteString(fmt.Sprintf("    %s%s  %s    %s%s\n\n",
+		b.WriteString(fmt.Sprintf("%s%s  %s    %s%s\n\n",
 			strings.Repeat(" ", nameWidth),
 			ethLabel, ethVal,
 			usdcLabel, usdcVal))

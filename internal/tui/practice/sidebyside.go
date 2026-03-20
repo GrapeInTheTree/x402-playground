@@ -76,8 +76,8 @@ func (m *SideBySideModel) View() string {
 		Render("Permit2")
 
 	header := lipgloss.JoinHorizontal(lipgloss.Center,
-		"  ", leftTitle, " ", eipProgress.View(),
-		"      ",
+		leftTitle, " ", eipProgress.View(),
+		"    ",
 		rightTitle, " ", p2Progress.View(),
 	)
 

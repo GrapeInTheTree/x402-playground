@@ -149,7 +149,6 @@ func (m *Model) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
-		MarginLeft(2).
 		Render("Practice — Payment Flow Execution")
 
 	var content string
@@ -178,11 +177,17 @@ func (m *Model) View() string {
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)
 
-	return lipgloss.JoinVertical(lipgloss.Left,
+	body := lipgloss.JoinVertical(lipgloss.Left,
 		"",
 		header,
 		"",
 		content,
+	)
+
+	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		centered,
 		statusBar,
 	)
 }

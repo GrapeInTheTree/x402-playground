@@ -92,11 +92,9 @@ func (m *TypedDataModel) View() string {
 	title := lipgloss.NewStyle().
 		Foreground(tui.ColorSecondary).
 		Bold(true).
-		MarginLeft(4).
 		Render("EIP-712 TypedData — " + mode)
 
 	hint := tui.MutedStyle.
-		MarginLeft(4).
 		Render("Tab으로 EIP-3009/Permit2 전환  ↑/↓ 필드 선택")
 
 	return lipgloss.JoinVertical(lipgloss.Left,

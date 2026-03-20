@@ -72,17 +72,17 @@ func (m Menu) View() string {
 			desc = lipgloss.NewStyle().
 				Foreground(tui.ColorSecondary).
 				Render(desc)
-			fmt.Fprintf(&b, "  %s %s %s\n", cursor, icon, title)
+			fmt.Fprintf(&b, "%s %s %s\n", cursor, icon, title)
 		} else {
 			title = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#D1D5DB")).
 				Render(title)
 			desc = tui.MutedStyle.Render(desc)
-			fmt.Fprintf(&b, "    %s %s\n", icon, title)
+			fmt.Fprintf(&b, "  %s %s\n", icon, title)
 		}
 
 		if desc != "" {
-			fmt.Fprintf(&b, "      %s\n", desc)
+			fmt.Fprintf(&b, "    %s\n", desc)
 		}
 		b.WriteString("\n")
 	}

@@ -46,17 +46,19 @@ func (f *FieldExplorer) Down() {
 func (f FieldExplorer) View() string {
 	var b strings.Builder
 
-	nameStyle := lipgloss.NewStyle().Foreground(tui.ColorSecondary).Width(20)
+	nameWidth := min(max(f.Width/4, 20), 30)
+
+	nameStyle := lipgloss.NewStyle().Foreground(tui.ColorSecondary).Width(nameWidth)
 	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB"))
-	selectedName := lipgloss.NewStyle().Foreground(tui.ColorPrimary).Bold(true).Width(20)
+	selectedName := lipgloss.NewStyle().Foreground(tui.ColorPrimary).Bold(true).Width(nameWidth)
 
 	for i, field := range f.Fields {
 		if i == f.Cursor {
-			fmt.Fprintf(&b, "  > %s %s\n",
+			fmt.Fprintf(&b, "> %s %s\n",
 				selectedName.Render(field.Name+":"),
 				lipgloss.NewStyle().Foreground(tui.ColorAccent).Render(field.Value))
 		} else {
-			fmt.Fprintf(&b, "    %s %s\n",
+			fmt.Fprintf(&b, "  %s %s\n",
 				nameStyle.Render(field.Name+":"),
 				valueStyle.Render(field.Value))
 		}
@@ -69,9 +71,9 @@ func (f FieldExplorer) View() string {
 			b.WriteString("\n")
 			descStyle := lipgloss.NewStyle().
 				Foreground(tui.ColorMuted).
-				PaddingLeft(4).
-				Width(f.Width - 8)
-			b.WriteString(descStyle.Render("  " + desc))
+				PaddingLeft(2).
+				Width(f.Width - 4)
+			b.WriteString(descStyle.Render(desc))
 			b.WriteString("\n")
 		}
 	}

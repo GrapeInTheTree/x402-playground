@@ -168,6 +168,9 @@ func (m RootModel) View() string {
 		return helpView
 	}
 
+	// Center page content horizontally
+	content = lipgloss.PlaceHorizontal(m.windowWidth, lipgloss.Center, content)
+
 	return lipgloss.NewStyle().
 		MaxWidth(m.windowWidth).
 		MaxHeight(m.windowHeight).
@@ -176,7 +179,7 @@ func (m RootModel) View() string {
 
 // renderHelpOverlay renders the keyboard shortcuts help panel inline
 // to avoid a circular import with the components package.
-func renderHelpOverlay(width, height int) string {
+func renderHelpOverlay(width, _ int) string {
 	title := lipgloss.NewStyle().
 		Foreground(ColorPrimary).
 		Bold(true).

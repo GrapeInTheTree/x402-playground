@@ -170,7 +170,6 @@ func renderFlowPanels(
 	stepLabel := fmt.Sprintf("Step %d/%d: %s", step+1, totalSteps, stepDesc)
 
 	header := lipgloss.JoinHorizontal(lipgloss.Center,
-		"    ",
 		progress.View(),
 		"  ",
 		lipgloss.NewStyle().Foreground(tui.ColorAccent).Bold(true).Render(stepLabel),

@@ -97,23 +97,22 @@ func (m *OnChainModel) View() string {
 	title := lipgloss.NewStyle().
 		Foreground(tui.ColorSecondary).
 		Bold(true).
-		MarginLeft(4).
 		Render("On-Chain State")
 
 	var b strings.Builder
 
 	if m.rpcURL == "" {
-		b.WriteString(tui.MutedStyle.Render("    RPC not configured. Set RPC_URL environment variable."))
+		b.WriteString(tui.MutedStyle.Render("RPC not configured. Set RPC_URL environment variable."))
 		return lipgloss.JoinVertical(lipgloss.Left, title, "", b.String())
 	}
 
 	if m.loading {
-		b.WriteString("    Loading on-chain data...")
+		b.WriteString("Loading on-chain data...")
 		return lipgloss.JoinVertical(lipgloss.Left, title, "", b.String())
 	}
 
 	if m.err != nil {
-		b.WriteString(tui.ErrorStyle.Render(fmt.Sprintf("    Error: %v", m.err)))
+		b.WriteString(tui.ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
 		return lipgloss.JoinVertical(lipgloss.Left, title, "", b.String())
 	}
 
@@ -127,19 +126,19 @@ func (m *OnChainModel) View() string {
 			if len(addr) > 14 {
 				addr = addr[:10] + "..." + addr[len(addr)-4:]
 			}
-			b.WriteString(fmt.Sprintf("    %s %s\n",
+			b.WriteString(fmt.Sprintf("%s %s\n",
 				nameStyle.Render(bal.Wallet.Name+":"),
 				addrStyle.Render(addr)))
-			b.WriteString(fmt.Sprintf("      ETH: %s    USDC: %s\n\n",
+			b.WriteString(fmt.Sprintf("  ETH: %s    USDC: %s\n\n",
 				valStyle.Render(bal.ETH),
 				valStyle.Render(bal.USDC)))
 		}
 	} else {
-		b.WriteString(tui.MutedStyle.Render("    No balance data. Press 'r' to refresh."))
+		b.WriteString(tui.MutedStyle.Render("No balance data. Press 'r' to refresh."))
 	}
 
 	if m.allowance != "" {
-		b.WriteString(fmt.Sprintf("    Permit2 Allowance: %s USDC\n",
+		b.WriteString(fmt.Sprintf("Permit2 Allowance: %s USDC\n",
 			lipgloss.NewStyle().Foreground(tui.ColorAccent).Render(m.allowance)))
 	}
 

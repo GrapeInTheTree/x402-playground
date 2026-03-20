@@ -138,15 +138,15 @@ func (m *Permit2FlowModel) View() string {
 
 	var detail string
 	if m.running {
-		detail = "    " + m.spinner.View() + " Executing..."
+		detail = m.spinner.View() + " Executing..."
 	} else if m.errors[step] != "" {
-		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorError).Render("Error: "+m.errors[step])
+		detail = lipgloss.NewStyle().Foreground(tui.ColorError).Render("Error: " + m.errors[step])
 	} else if m.results[step] != "" {
-		detail = lipgloss.NewStyle().MarginLeft(4).Width(m.width - 8).Render(m.results[step])
+		detail = lipgloss.NewStyle().Width(m.width - 4).Render(m.results[step])
 	} else if m.execErr != "" {
-		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorError).Render(m.execErr)
+		detail = lipgloss.NewStyle().Foreground(tui.ColorError).Render(m.execErr)
 	} else {
-		detail = "    " + lipgloss.NewStyle().Foreground(tui.ColorMuted).Render("Press n to execute this step")
+		detail = lipgloss.NewStyle().Foreground(tui.ColorMuted).Render("Press n to execute this step")
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, view, "", detail)

@@ -119,10 +119,11 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the current sub-page or the explore menu.
 func (m *Model) View() string {
+	contentWidth := min(m.width-4, 100)
+
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
-		MarginLeft(2).
 		Render("Explore — Data Structure Inspector")
 
 	var content string
@@ -148,11 +149,19 @@ func (m *Model) View() string {
 
 	statusBar := components.StatusBar{Width: m.width}.View(hints)
 
+	body := lipgloss.NewStyle().Width(contentWidth).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			"",
+			header,
+			"",
+			content,
+		),
+	)
+
+	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
+
 	return lipgloss.JoinVertical(lipgloss.Left,
-		"",
-		header,
-		"",
-		content,
+		centered,
 		statusBar,
 	)
 }
