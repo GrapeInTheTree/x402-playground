@@ -76,11 +76,11 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the home page with title and menu.
 func (m *Model) View() string {
-	contentWidth := min(m.width-8, 60)
+	bannerW := max(m.width-6, 30)
 
-	// ASCII art banner
-	bannerLine := strings.Repeat("\u2550", contentWidth-2)
-	banner := fmt.Sprintf("  %s\n   x402 Protocol Explorer\n  %s", bannerLine, bannerLine)
+	// ASCII art banner — scales with terminal width
+	bannerLine := strings.Repeat("═", bannerW)
+	banner := fmt.Sprintf(" %s\n  x402 Protocol Explorer\n %s", bannerLine, bannerLine)
 
 	title := lipgloss.NewStyle().
 		Bold(true).

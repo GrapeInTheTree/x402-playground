@@ -294,7 +294,7 @@ func (m *Model) viewList() string {
 	scoreText := lipgloss.NewStyle().Foreground(tui.ColorMuted).
 		Render(fmt.Sprintf("Score: %d/%d", m.score.Correct, m.score.Questions))
 	divider := lipgloss.NewStyle().Foreground(tui.ColorBorder).
-		Render(strings.Repeat("\u2500", min(m.width-8, 60)))
+		Render(strings.Repeat("\u2500", max(m.width-6, 20)))
 
 	groups := buildLevelGroups(m.questions)
 
@@ -309,7 +309,7 @@ func (m *Model) viewList() string {
 		Foreground(tui.ColorSecondary).
 		MarginTop(1)
 
-	rowWidth := max(min(m.width-8, 64), 20)
+	rowWidth := max(m.width-4, 20)
 
 	var items strings.Builder
 	for i, q := range m.questions {
@@ -378,10 +378,10 @@ func (m *Model) viewQuestion() string {
 		Render(fmt.Sprintf("Question %d/%d: %s", m.cursor+1, len(m.questions), q.Title))
 	subtitle := lipgloss.NewStyle().Foreground(tui.ColorAccent).Render("[" + q.Difficulty + "]")
 	divider := lipgloss.NewStyle().Foreground(tui.ColorBorder).
-		Render(strings.Repeat("─", min(m.width-8, 60)))
+		Render(strings.Repeat("─", max(m.width-6, 20)))
 
 	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")).
-		Width(min(m.width-10, 70)).Render(q.Description)
+		Width(max(m.width-6, 30)).Render(q.Description)
 
 	prompt := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorAccent).
 		Render("Press Enter to open $EDITOR...")
@@ -407,7 +407,7 @@ func (m *Model) viewResult() string {
 	title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorPrimary).
 		Render(fmt.Sprintf("Result: %s", q.Title))
 	divider := lipgloss.NewStyle().Foreground(tui.ColorBorder).
-		Render(strings.Repeat("─", min(m.width-8, 60)))
+		Render(strings.Repeat("─", max(m.width-6, 20)))
 
 	var status string
 	if r == nil {
@@ -416,7 +416,7 @@ func (m *Model) viewResult() string {
 		status = lipgloss.JoinVertical(lipgloss.Left,
 			tui.ErrorStyle.Render("✗ "+r.Error),
 			"",
-			lipgloss.NewStyle().Foreground(tui.ColorMuted).Width(min(m.width-10, 80)).Render(r.Output),
+			lipgloss.NewStyle().Foreground(tui.ColorMuted).Width(max(m.width-4, 30)).Render(r.Output),
 		)
 	} else {
 		var sb strings.Builder
@@ -431,7 +431,7 @@ func (m *Model) viewResult() string {
 			sb.WriteString(tui.ErrorStyle.Render(fmt.Sprintf("✗ Tests: %d/%d passed", r.Passed, r.Total)) + "\n")
 		}
 		sb.WriteString("\n")
-		sb.WriteString(lipgloss.NewStyle().Foreground(tui.ColorMuted).Width(min(m.width-10, 80)).Render(r.Output))
+		sb.WriteString(lipgloss.NewStyle().Foreground(tui.ColorMuted).Width(max(m.width-4, 30)).Render(r.Output))
 		status = sb.String()
 	}
 

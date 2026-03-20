@@ -51,7 +51,7 @@ func (m *Menu) Selected() int {
 func (m Menu) View() string {
 	var b strings.Builder
 
-	rowWidth := max(min(m.Width-6, 64), 20)
+	rowWidth := max(m.Width-4, 20)
 
 	for i, item := range m.Items {
 		icon := item.Icon
