@@ -100,5 +100,5 @@ func (m *Model) View() string {
 		m.menu.View(),
 	)
 
-	return tui.LayoutPage(body, "\u2191/\u2193 navigate  enter select  ? help  q quit", m.width, m.height)
+	return tui.LayoutPageCentered(body, "\u2191/\u2193 navigate  enter select  ? help  q quit", m.width, m.height)
 }

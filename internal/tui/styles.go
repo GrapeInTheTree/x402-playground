@@ -92,3 +92,27 @@ func LayoutPage(body, hints string, width, height int) string {
 
 	return lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
 }
+
+// LayoutPageCentered renders body centered both vertically and horizontally,
+// with a status bar pinned at the bottom. Ideal for landing/splash screens.
+func LayoutPageCentered(body, hints string, width, height int) string {
+	if width <= 0 || height <= 0 {
+		return body
+	}
+
+	statusBar := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#9CA3AF")).
+		Background(ColorSubtle).
+		Width(width).
+		Padding(0, 2).
+		Render("  " + hints)
+
+	statusH := lipgloss.Height(statusBar)
+	bodyAreaH := max(height-statusH, 1)
+
+	centered := lipgloss.Place(width, bodyAreaH,
+		lipgloss.Center, lipgloss.Center,
+		body)
+
+	return lipgloss.JoinVertical(lipgloss.Top, centered, statusBar)
+}
