@@ -154,40 +154,33 @@ func (m *Model) View() string {
 		Render("Practice — Payment Flow Execution")
 
 	var content string
-	var hints string
 
 	switch m.sub {
 	case subPageMenu:
 		content = m.menu.View()
-		hints = "  ↑/↓ navigate  enter select  ? help  esc back"
 	case subPageEIP3009:
 		if m.eip3009flow != nil {
 			content = m.eip3009flow.View()
 		}
-		hints = "  n next step  p prev step  ? help  esc back to menu"
 	case subPagePermit2:
 		if m.permit2flow != nil {
 			content = m.permit2flow.View()
 		}
-		hints = "  n next step  p prev step  ? help  esc back to menu"
 	case subPageSideBySide:
 		if m.sidebyside != nil {
 			content = m.sidebyside.View()
 		}
-		hints = "  n next step  ? help  esc back to menu"
 	}
 
 	divider := lipgloss.NewStyle().
 		Foreground(tui.ColorBorder).
 		Render(strings.Repeat("─", min(m.width-8, 60)))
 
-	body := lipgloss.JoinVertical(lipgloss.Left,
+	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
 		"",
 		divider,
 		"",
 		content,
 	)
-
-	return tui.LayoutPage(body, hints, m.width, m.height)
 }

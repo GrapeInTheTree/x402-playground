@@ -91,7 +91,7 @@ func (m *Model) View() string {
 		Foreground(tui.ColorMuted).
 		Render("  Interactive learning tool for the x402 payment protocol")
 
-	body := lipgloss.JoinVertical(lipgloss.Left,
+	return lipgloss.JoinVertical(lipgloss.Left,
 		"",
 		title,
 		subtitle,
@@ -99,6 +99,4 @@ func (m *Model) View() string {
 		"",
 		m.menu.View(),
 	)
-
-	return tui.LayoutPageCentered(body, "\u2191/\u2193 navigate  enter select  ? help  q quit", m.width, m.height)
 }

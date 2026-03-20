@@ -368,8 +368,7 @@ func (m *Model) viewList() string {
 		}
 	}
 
-	body := lipgloss.JoinVertical(lipgloss.Left, title, scoreText, divider, "", items.String())
-	return tui.LayoutPage(body, "\u2191/\u2193 navigate  enter select  ? help  esc back", m.width, m.height)
+	return lipgloss.JoinVertical(lipgloss.Left, title, scoreText, divider, "", items.String())
 }
 
 func (m *Model) viewQuestion() string {
@@ -398,8 +397,7 @@ func (m *Model) viewQuestion() string {
 		hintsView = hb.String()
 	}
 
-	body := lipgloss.JoinVertical(lipgloss.Left, title, subtitle, divider, "", desc, "", prompt, "", hintsView)
-	return tui.LayoutPage(body, "enter open editor  esc back", m.width, m.height)
+	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle, divider, "", desc, "", prompt, "", hintsView)
 }
 
 func (m *Model) viewResult() string {
@@ -440,6 +438,5 @@ func (m *Model) viewResult() string {
 	scoreText := lipgloss.NewStyle().Foreground(tui.ColorAccent).Bold(true).
 		Render(fmt.Sprintf("Score: %d/%d", m.score.Correct, m.score.Questions))
 
-	body := lipgloss.JoinVertical(lipgloss.Left, title, divider, "", status, "", scoreText)
-	return tui.LayoutPage(body, "r retry  n next question  esc back to list", m.width, m.height)
+	return lipgloss.JoinVertical(lipgloss.Left, title, divider, "", status, "", scoreText)
 }

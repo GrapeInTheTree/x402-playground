@@ -144,7 +144,7 @@ func (m *Model) View() string {
 		Foreground(tui.ColorBorder).
 		Render(strings.Repeat("─", min(m.width-8, 60)))
 
-	body := lipgloss.JoinVertical(lipgloss.Left,
+	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
 		"",
 		divider,
@@ -153,8 +153,6 @@ func (m *Model) View() string {
 		"",
 		content,
 	)
-
-	return tui.LayoutPage(body, "  r refresh  ? help  esc back", m.width, m.height)
 }
 
 func (m *Model) usdcAddr() string {

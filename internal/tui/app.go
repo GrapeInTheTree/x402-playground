@@ -24,6 +24,24 @@ const (
 	minTermHeight = 20
 )
 
+// pageLabel returns the display name for each page.
+func pageLabel(p Page) string {
+	switch p {
+	case PageHome:
+		return "Home"
+	case PageLearn:
+		return "Learn"
+	case PageExplore:
+		return "Explore"
+	case PagePractice:
+		return "Practice"
+	case PageDashboard:
+		return "Dashboard"
+	default:
+		return ""
+	}
+}
+
 // SubModel is implemented by each page model.
 type SubModel interface {
 	Init() tea.Cmd
@@ -70,14 +88,15 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
 		m.windowHeight = msg.Height
+		// Pages get the inner content size (frame takes some space)
+		iw, ih := m.innerSize()
 		for page, sub := range m.pages {
-			sub.SetSize(msg.Width, msg.Height-2)
+			sub.SetSize(iw, ih)
 			m.pages[page] = sub
 		}
-		// Initialize current page on first resize if not yet created
 		if _, ok := m.pages[m.currentPage]; !ok {
 			if factory, ok := m.factories[m.currentPage]; ok {
-				sub := factory(m.windowWidth, m.windowHeight-2)
+				sub := factory(iw, ih)
 				m.pages[m.currentPage] = sub
 				return m, sub.Init()
 			}
@@ -88,7 +107,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPage = msg.Page
 		if _, ok := m.pages[msg.Page]; !ok {
 			if factory, ok := m.factories[msg.Page]; ok {
-				sub := factory(m.windowWidth, m.windowHeight-2)
+				iw, ih := m.innerSize()
+				sub := factory(iw, ih)
 				m.pages[msg.Page] = sub
 				return m, sub.Init()
 			}
@@ -105,33 +125,28 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
-		// Toggle help overlay
 		if msg.String() == "?" {
 			m.showHelp = !m.showHelp
 			return m, nil
 		}
-		// If help is showing, any other key closes it
 		if m.showHelp {
 			m.showHelp = false
 			return m, nil
 		}
-		// On home page, 'q' quits
 		if m.currentPage == PageHome && msg.String() == "q" {
 			return m, tea.Quit
 		}
 	}
 
-	// Ensure current page is initialized
 	if _, ok := m.pages[m.currentPage]; !ok {
 		if factory, ok := m.factories[m.currentPage]; ok {
-			sub := factory(m.windowWidth, m.windowHeight-2)
+			iw, ih := m.innerSize()
+			sub := factory(iw, ih)
 			m.pages[m.currentPage] = sub
-			cmd := sub.Init()
-			return m, cmd
+			return m, sub.Init()
 		}
 	}
 
-	// Delegate to current page
 	if sub, ok := m.pages[m.currentPage]; ok {
 		newSub, cmd := sub.Update(msg)
 		m.pages[m.currentPage] = newSub
@@ -141,50 +156,124 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the current page or the help overlay.
+// innerSize returns the content area size inside the app frame.
+// Frame: 2 border + 2 padding horizontal, header + status + border vertical.
+func (m RootModel) innerSize() (int, int) {
+	iw := max(m.windowWidth-6, 20)  // 2 border + 4 padding
+	ih := max(m.windowHeight-6, 10) // header(1) + border(2) + status(1) + padding(2)
+	return iw, ih
+}
+
+// View renders the app frame with header bar, page content, and status bar.
 func (m RootModel) View() string {
-	if m.windowWidth == 0 {
+	w := m.windowWidth
+	h := m.windowHeight
+
+	if w == 0 {
 		return "Loading..."
 	}
 
-	// Minimum terminal size check
-	if m.windowWidth < minTermWidth || m.windowHeight < minTermHeight {
-		msg := fmt.Sprintf(
-			"Terminal too small: %dx%d\nMinimum required: %dx%d\n\nPlease resize your terminal.",
-			m.windowWidth, m.windowHeight, minTermWidth, minTermHeight,
-		)
+	if w < minTermWidth || h < minTermHeight {
 		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F59E0B")).
-			Bold(true).
-			Padding(2, 4).
-			Render(msg)
-	}
-
-	// Render current page
-	var content string
-	if sub, ok := m.pages[m.currentPage]; ok {
-		content = sub.View()
-	} else {
-		content = "Initializing..."
+			Foreground(lipgloss.Color("#F59E0B")).Bold(true).Padding(2, 4).
+			Render(fmt.Sprintf("Terminal too small: %dx%d\nMinimum: %dx%d\n\nPlease resize.", w, h, minTermWidth, minTermHeight))
 	}
 
 	// Help overlay
 	if m.showHelp {
-		helpView := renderHelpOverlay(m.windowWidth, m.windowHeight)
-		// Center the overlay
-		helpView = lipgloss.Place(m.windowWidth, m.windowHeight, lipgloss.Center, lipgloss.Center, helpView)
-		return helpView
+		helpView := renderHelpOverlay(w)
+		return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, helpView)
 	}
 
-	return content
+	// Get page content
+	var pageContent string
+	if sub, ok := m.pages[m.currentPage]; ok {
+		pageContent = sub.View()
+	} else {
+		pageContent = "Initializing..."
+	}
+
+	// === Build the consistent app frame ===
+
+	innerW := max(w-4, 20) // border takes 2 chars each side
+
+	// Header bar: app name (left) + current page tab (right)
+	appName := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Render(" x402 Playground")
+
+	pageTab := lipgloss.NewStyle().
+		Foreground(ColorAccent).
+		Bold(true).
+		Render(pageLabel(m.currentPage) + " ")
+
+	spacerW := max(innerW-lipgloss.Width(appName)-lipgloss.Width(pageTab), 0)
+	headerBar := appName + strings.Repeat(" ", spacerW) + pageTab
+
+	headerStyle := lipgloss.NewStyle().
+		Background(ColorSubtle).
+		Width(innerW).
+		Padding(0, 1)
+
+	header := headerStyle.Render(headerBar)
+
+	// Status bar (inside the frame, at bottom)
+	hints := m.statusHints()
+	statusStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#9CA3AF")).
+		Background(ColorSubtle).
+		Width(innerW).
+		Padding(0, 1)
+	status := statusStyle.Render(" " + hints)
+
+	// Content area: fill remaining height
+	headerH := lipgloss.Height(header)
+	statusH := lipgloss.Height(status)
+	borderH := 2 // top + bottom border
+	contentH := max(h-headerH-statusH-borderH, 1)
+
+	content := lipgloss.NewStyle().
+		Width(innerW).
+		Height(contentH).
+		Padding(0, 1).
+		Render(pageContent)
+
+	// Assemble inside frame
+	inside := lipgloss.JoinVertical(lipgloss.Top, header, content, status)
+
+	// Wrap in border
+	frame := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorBorder).
+		Width(w - 2).
+		Render(inside)
+
+	return frame
 }
 
-// renderHelpOverlay renders the keyboard shortcuts help panel inline
-// to avoid a circular import with the components package.
-func renderHelpOverlay(width, _ int) string {
+// statusHints returns context-sensitive keyboard hints for the current page.
+func (m RootModel) statusHints() string {
+	switch m.currentPage {
+	case PageHome:
+		return "↑/↓ navigate  enter select  ? help  q quit"
+	case PageLearn:
+		return "↑/↓ navigate  enter select/edit  ? help  esc back"
+	case PageExplore:
+		return "↑/↓ navigate  tab switch  ? help  esc back"
+	case PagePractice:
+		return "n next step  p prev  ? help  esc back"
+	case PageDashboard:
+		return "r refresh  ? help  esc back"
+	default:
+		return "? help  esc back"
+	}
+}
+
+// renderHelpOverlay renders the keyboard shortcuts help panel.
+func renderHelpOverlay(width int) string {
 	title := lipgloss.NewStyle().
-		Foreground(ColorPrimary).
-		Bold(true).
+		Foreground(ColorPrimary).Bold(true).
 		Render("Keyboard Shortcuts")
 
 	bindings := []struct{ key, desc string }{
@@ -199,6 +288,7 @@ func renderHelpOverlay(width, _ int) string {
 		{"p", "Previous step (Practice)"},
 		{"Tab", "Switch view (Explore)"},
 		{"r", "Refresh (Dashboard)"},
+		{"e", "Open editor (Learn)"},
 	}
 
 	var b strings.Builder
@@ -217,16 +307,10 @@ func renderHelpOverlay(width, _ int) string {
 
 	b.WriteString("\n" + MutedStyle.Render("  Press ? to close"))
 
-	boxWidth := 40
-	if width > 0 && width < 50 {
-		boxWidth = width - 10
-	}
-
-	style := lipgloss.NewStyle().
+	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(ColorPrimary).
 		Padding(1, 2).
-		Width(boxWidth)
-
-	return style.Render(b.String())
+		Width(min(40, width-10)).
+		Render(b.String())
 }
