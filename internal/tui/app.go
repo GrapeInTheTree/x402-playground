@@ -74,6 +74,14 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sub.SetSize(msg.Width, msg.Height-2)
 			m.pages[page] = sub
 		}
+		// Initialize current page on first resize if not yet created
+		if _, ok := m.pages[m.currentPage]; !ok {
+			if factory, ok := m.factories[m.currentPage]; ok {
+				sub := factory(m.windowWidth, m.windowHeight-2)
+				m.pages[m.currentPage] = sub
+				return m, sub.Init()
+			}
+		}
 		return m, nil
 
 	case NavigateMsg:
