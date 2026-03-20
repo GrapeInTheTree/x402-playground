@@ -74,8 +74,15 @@ solc_version = "0.8.20"
 		return fmt.Errorf("write foundry.toml: %w", err)
 	}
 
+	// Initialize git repo (forge install requires it)
+	gitInit := exec.Command("git", "init")
+	gitInit.Dir = dir
+	if out, err := gitInit.CombinedOutput(); err != nil {
+		return fmt.Errorf("git init: %w\n%s", err, out)
+	}
+
 	// Install forge-std for testing
-	cmd := exec.Command("forge", "install", "foundry-rs/forge-std", "--no-git", "--no-commit")
+	cmd := exec.Command("forge", "install", "foundry-rs/forge-std", "--no-commit")
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("forge install forge-std: %w\n%s", err, out)

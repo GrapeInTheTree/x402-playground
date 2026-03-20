@@ -34,6 +34,7 @@ type Model struct {
 	solRunner *quiz.Runner
 	results   map[int]*quiz.Result
 	score     quiz.Score
+	errMsg    string // error message to display
 	width     int
 	height    int
 }
@@ -166,14 +167,17 @@ func (m *Model) openEditor() tea.Cmd {
 			runner, err = quiz.NewRunner()
 		}
 		if err != nil {
+			m.errMsg = "Failed to create runner: " + err.Error()
 			return nil
 		}
 		m.setRunner(lang, runner)
 	}
 
 	if err := os.WriteFile(runner.TemplatePath(), []byte(q.Template), 0644); err != nil {
+		m.errMsg = "Failed to write template: " + err.Error()
 		return nil
 	}
+	m.errMsg = "" // clear any previous error
 
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -397,7 +401,12 @@ func (m *Model) viewQuestion() string {
 		hintsView = hb.String()
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle, divider, "", desc, "", prompt, "", hintsView)
+	var errView string
+	if m.errMsg != "" {
+		errView = tui.ErrorStyle.Render("Error: " + m.errMsg)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, title, subtitle, divider, "", desc, "", prompt, "", errView, hintsView)
 }
 
 func (m *Model) viewResult() string {
