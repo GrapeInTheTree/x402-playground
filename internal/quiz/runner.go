@@ -82,7 +82,7 @@ solc_version = "0.8.20"
 	}
 
 	// Install forge-std for testing
-	cmd := exec.Command("forge", "install", "foundry-rs/forge-std", "--no-commit")
+	cmd := exec.Command("forge", "install", "foundry-rs/forge-std")
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("forge install forge-std: %w\n%s", err, out)
