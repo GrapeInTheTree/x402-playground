@@ -168,13 +168,7 @@ func (m RootModel) View() string {
 		return helpView
 	}
 
-	// Center page content horizontally
-	content = lipgloss.PlaceHorizontal(m.windowWidth, lipgloss.Center, content)
-
-	return lipgloss.NewStyle().
-		MaxWidth(m.windowWidth).
-		MaxHeight(m.windowHeight).
-		Render(content)
+	return content
 }
 
 // renderHelpOverlay renders the keyboard shortcuts help panel inline

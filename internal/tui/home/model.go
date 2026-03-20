@@ -73,8 +73,6 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the home page with title and menu.
 func (m *Model) View() string {
-	contentWidth := min(m.width-4, 70)
-
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
@@ -82,29 +80,14 @@ func (m *Model) View() string {
 
 	subtitle := lipgloss.NewStyle().
 		Foreground(tui.ColorMuted).
-		MarginBottom(1).
 		Render("Interactive learning tool for the x402 payment protocol")
 
-	menu := m.menu.View()
-
-	body := lipgloss.NewStyle().Width(contentWidth).Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			"",
-			header,
-			subtitle,
-			"",
-			menu,
-		),
+	body := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		subtitle,
+		"",
+		m.menu.View(),
 	)
 
-	hints := components.StatusBar{Width: m.width}.View(
-		"  ↑/↓ navigate  enter select  ? help  q quit",
-	)
-
-	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		centered,
-		hints,
-	)
+	return tui.LayoutPage(body, "↑/↓ navigate  enter select  ? help  q quit", m.width, m.height)
 }

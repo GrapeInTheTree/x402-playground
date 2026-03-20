@@ -119,8 +119,6 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the current sub-page or the explore menu.
 func (m *Model) View() string {
-	contentWidth := min(m.width-4, 100)
-
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
@@ -147,21 +145,12 @@ func (m *Model) View() string {
 		hints = "  ? help  esc back to menu"
 	}
 
-	statusBar := components.StatusBar{Width: m.width}.View(hints)
-
-	body := lipgloss.NewStyle().Width(contentWidth).Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			"",
-			header,
-			"",
-			content,
-		),
+	body := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		header,
+		"",
+		content,
 	)
 
-	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		centered,
-		statusBar,
-	)
+	return tui.LayoutPage(body, hints, m.width, m.height)
 }

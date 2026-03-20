@@ -3,8 +3,8 @@ package learn
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/GrapeInTheTree/x402-playground/internal/tui"
@@ -118,8 +118,6 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the topic list or content view depending on the current state.
 func (m *Model) View() string {
-	contentWidth := min(m.width-4, 100)
-
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
@@ -141,21 +139,12 @@ func (m *Model) View() string {
 		hints = "  ↑/↓ scroll  ? help  esc back to topics"
 	}
 
-	statusBar := components.StatusBar{Width: m.width}.View(hints)
-
-	body := lipgloss.NewStyle().Width(contentWidth).Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			"",
-			header,
-			"",
-			content,
-		),
+	body := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		header,
+		"",
+		content,
 	)
 
-	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		centered,
-		statusBar,
-	)
+	return tui.LayoutPage(body, hints, m.width, m.height)
 }

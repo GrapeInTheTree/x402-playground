@@ -13,7 +13,6 @@ import (
 	"github.com/GrapeInTheTree/x402-playground/internal/config"
 	"github.com/GrapeInTheTree/x402-playground/internal/demo"
 	"github.com/GrapeInTheTree/x402-playground/internal/tui"
-	"github.com/GrapeInTheTree/x402-playground/internal/tui/components"
 )
 
 type balancesMsg struct {
@@ -117,8 +116,6 @@ func (m *Model) SetSize(width, height int) {
 
 // View renders the dashboard with network info and wallet balances.
 func (m *Model) View() string {
-	contentWidth := min(m.width-4, 80)
-
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(tui.ColorPrimary).
@@ -143,26 +140,17 @@ func (m *Model) View() string {
 	networkInfo := tui.MutedStyle.Render(
 		fmt.Sprintf("Network: %s  |  USDC: %s", network, m.usdcAddr()))
 
-	hints := components.StatusBar{Width: m.width}.View("  r refresh  ? help  esc back")
-
-	body := lipgloss.NewStyle().Width(contentWidth).Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			"",
-			header,
-			"",
-			networkInfo,
-			"",
-			content,
-			"",
-		),
+	body := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		header,
+		"",
+		networkInfo,
+		"",
+		content,
+		"",
 	)
 
-	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		centered,
-		hints,
-	)
+	return tui.LayoutPage(body, "  r refresh  ? help  esc back", m.width, m.height)
 }
 
 func (m *Model) usdcAddr() string {

@@ -175,8 +175,6 @@ func (m *Model) View() string {
 		hints = "  n next step  ? help  esc back to menu"
 	}
 
-	statusBar := components.StatusBar{Width: m.width}.View(hints)
-
 	body := lipgloss.JoinVertical(lipgloss.Left,
 		"",
 		header,
@@ -184,10 +182,5 @@ func (m *Model) View() string {
 		content,
 	)
 
-	centered := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, body)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		centered,
-		statusBar,
-	)
+	return tui.LayoutPage(body, hints, m.width, m.height)
 }

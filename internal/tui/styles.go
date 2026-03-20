@@ -62,3 +62,17 @@ var (
 			Foreground(ColorMuted).
 			MarginTop(1)
 )
+
+// LayoutPage places body content at the top and hints anchored at the bottom,
+// filling the full height. Content is horizontally centered within the width.
+func LayoutPage(body, hints string, width, height int) string {
+	centeredBody := lipgloss.PlaceHorizontal(width, lipgloss.Center, body)
+
+	bodyH := lipgloss.Height(centeredBody)
+	hintsH := lipgloss.Height(hints)
+	gap := max(height-bodyH-hintsH, 0)
+
+	return centeredBody + "\n" +
+		lipgloss.NewStyle().Height(gap).Render("") +
+		MutedStyle.Render(hints)
+}
