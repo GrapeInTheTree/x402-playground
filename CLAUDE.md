@@ -4,23 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-Go-based x402 payment protocol demo — tested and verified on **Base Sepolia** with real USDC transfers. Supports both **EIP-3009** and **Permit2** transfer methods. Three independently deployable components:
+Go-based x402 payment protocol demo — tested and verified on **Base Sepolia** with real USDC transfers. Supports both **EIP-3009** and **Permit2** transfer methods. Four components:
 - **Facilitator Server** — Verifies and settles payments on-chain (EIP-3009 or Permit2, auto-detected)
 - **Resource Server** — Protected APIs that return HTTP 402 with payment requirements
 - **Client CLI** — Signs payment payloads (EIP-3009 or Permit2) and handles automatic payment flow
+- **Explorer TUI** — Bubbletea-based interactive learning tool for the x402 protocol (Learn, Explore, Practice, Dashboard)
 
 Chain-agnostic: configure via environment variables. Verified working on Base Sepolia (eip155:84532).
 
 ## Build & Run
 
 ```bash
-make build                    # Build all three binaries
-make test                     # Run all 28 unit tests
+make build                    # Build all four binaries
+make test                     # Run all unit tests
 make run-facilitator          # go run ./cmd/facilitator
 make run-resource             # go run ./cmd/resource
 make run-client               # go run ./cmd/client
-make run-demo                 # Interactive 10-step payment flow demo (EIP-3009)
-make run-demo-permit2         # Interactive demo with Permit2 transfer method
+make run-explorer             # Interactive TUI explorer (Home menu)
+make run-demo                 # Practice mode: EIP-3009 flow
+make run-demo-permit2         # Practice mode: Permit2 flow
+make run-learn                # Learn mode: protocol concepts
+make run-dashboard            # Dashboard: wallet balances
+
+# Explorer with flags
+go run ./cmd/explorer --mode=learn           # Jump directly to Learn mode
+go run ./cmd/explorer --mode=practice --flow=eip3009  # EIP-3009 practice
+go run ./cmd/explorer --mode=dashboard       # Dashboard only
+
 go test ./internal/config -run TestLoadFacilitator -v        # Single test
 go test ./internal/facilserver -run TestHandleVerify -v     # Facilserver tests
 go test ./internal/signer -run TestFacilitatorSigner -v     # Signer tests
@@ -37,6 +47,12 @@ docker compose up             # Facilitator + Resource server
 ```
 Client CLI ──HTTP──> Resource Server ──HTTP──> Facilitator Server ──RPC──> EVM Chain
 cmd/client           cmd/resource              cmd/facilitator
+
+Explorer TUI (cmd/explorer) — Interactive learning & practice tool
+  ├── Learn     — x402 protocol concepts (6 topics, markdown)
+  ├── Explore   — Data structure inspector (headers, EIP-712, on-chain)
+  ├── Practice  — 10-step payment flow (EIP-3009, Permit2, side-by-side)
+  └── Dashboard — Wallet balances (live from chain)
 ```
 
 ### Wallet Roles
@@ -63,8 +79,10 @@ USDC flows directly from Client → PAY_TO. The Facilitator never touches USDC �
 - `cmd/facilitator/main.go` — Wires SDK facilitator + EVM exact scheme + Gin router
 - `cmd/resource/main.go` — Wires SDK Gin middleware + facilitator HTTP client + custom MoneyParser
 - `cmd/client/main.go` — Wires SDK client signer + HTTP RoundTripper for auto-payment
-- `cmd/demo/main.go` — Interactive 10-step demo: 402 → sign → verify → settle → balance diff
+- `cmd/explorer/main.go` — Bubbletea TUI entry point with `--mode` and `--flow` flags
 - `cmd/balance/main.go` — Utility to check ETH/USDC balances on current network
+- `internal/demo/` — Extracted protocol logic: types, balance queries, header decoding, flow execution
+- `internal/tui/` — TUI framework: app routing, components, pages (home, learn, explore, practice, dashboard)
 
 ### SDK Usage Pattern
 

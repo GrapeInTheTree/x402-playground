@@ -1,9 +1,10 @@
-.PHONY: build test test-integration lint run-facilitator run-resource run-client run-demo run-demo-permit2 clean
+.PHONY: build test test-integration lint run-facilitator run-resource run-client run-demo run-demo-permit2 run-explorer run-learn run-dashboard clean
 
 build:
 	go build -o facilitator ./cmd/facilitator
 	go build -o resource ./cmd/resource
 	go build -o client ./cmd/client
+	go build -o explorer ./cmd/explorer
 
 test:
 	go test ./... -v -count=1
@@ -24,10 +25,19 @@ run-client:
 	go run ./cmd/client
 
 run-demo:
-	go run ./cmd/demo
+	go run ./cmd/explorer --mode=practice --flow=eip3009
 
 run-demo-permit2:
-	ASSET_TRANSFER_METHOD=permit2 go run ./cmd/demo
+	go run ./cmd/explorer --mode=practice --flow=permit2
+
+run-explorer:
+	go run ./cmd/explorer
+
+run-learn:
+	go run ./cmd/explorer --mode=learn
+
+run-dashboard:
+	go run ./cmd/explorer --mode=dashboard
 
 clean:
-	rm -f facilitator resource client
+	rm -f facilitator resource client explorer

@@ -116,6 +116,48 @@ func LoadClient() (*ClientConfig, error) {
 	return cfg, nil
 }
 
+// ExplorerConfig holds configuration for the TUI explorer.
+type ExplorerConfig struct {
+	ClientPrivateKey    string
+	FacilitatorURL      string
+	ResourceURL         string
+	PayToAddress        string
+	RPCURL              string
+	Network             string
+	USDCAddress         string
+	AssetTransferMethod string // "eip3009" (default) or "permit2"
+	LogLevel            slog.Level
+}
+
+func LoadExplorer() (*ExplorerConfig, error) {
+	cfg := &ExplorerConfig{
+		ClientPrivateKey:    os.Getenv("CLIENT_PRIVATE_KEY"),
+		FacilitatorURL:      os.Getenv("FACILITATOR_URL"),
+		ResourceURL:         os.Getenv("RESOURCE_URL"),
+		PayToAddress:        os.Getenv("PAY_TO_ADDRESS"),
+		RPCURL:              envOr("RPC_URL", "https://sepolia.base.org"),
+		Network:             envOr("NETWORK", "eip155:84532"),
+		USDCAddress:         envOr("USDC_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e"),
+		AssetTransferMethod: envOr("ASSET_TRANSFER_METHOD", "eip3009"),
+		LogLevel:            parseLogLevel(os.Getenv("LOG_LEVEL")),
+	}
+
+	var errs []error
+	if cfg.ClientPrivateKey == "" {
+		errs = append(errs, fmt.Errorf("CLIENT_PRIVATE_KEY is required"))
+	}
+	if cfg.ResourceURL == "" {
+		errs = append(errs, fmt.Errorf("RESOURCE_URL is required"))
+	}
+	if cfg.FacilitatorURL == "" {
+		errs = append(errs, fmt.Errorf("FACILITATOR_URL is required"))
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+	return cfg, nil
+}
+
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
