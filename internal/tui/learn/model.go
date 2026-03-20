@@ -32,22 +32,24 @@ type Model struct {
 	current   page
 	goRunner  *quiz.Runner
 	solRunner *quiz.Runner
-	results   map[int]*quiz.Result
-	score     quiz.Score
-	errMsg    string // error message to display
-	width     int
-	height    int
+	results       map[int]*quiz.Result
+	score         quiz.Score
+	errMsg        string // error message to display
+	lastEditedIdx int    // last question index opened in editor (-1 = none)
+	width         int
+	height        int
 }
 
 // New creates a new quiz learning model.
 func New(width, height int) *Model {
 	questions := quiz.AllQuestions()
 	return &Model{
-		questions: questions,
-		results:   make(map[int]*quiz.Result),
-		score:     quiz.Score{Questions: len(questions)},
-		width:     width,
-		height:    height,
+		questions:     questions,
+		results:       make(map[int]*quiz.Result),
+		score:         quiz.Score{Questions: len(questions)},
+		lastEditedIdx: -1,
+		width:         width,
+		height:        height,
 	}
 }
 
@@ -173,11 +175,15 @@ func (m *Model) openEditor() tea.Cmd {
 		m.setRunner(lang, runner)
 	}
 
-	if err := os.WriteFile(runner.TemplatePath(), []byte(q.Template), 0644); err != nil {
-		m.errMsg = "Failed to write template: " + err.Error()
-		return nil
+	// Write template only for a new question (preserve user's code on retry)
+	if m.lastEditedIdx != m.cursor {
+		if err := os.WriteFile(runner.TemplatePath(), []byte(q.Template), 0644); err != nil {
+			m.errMsg = "Failed to write template: " + err.Error()
+			return nil
+		}
+		m.lastEditedIdx = m.cursor
 	}
-	m.errMsg = "" // clear any previous error
+	m.errMsg = ""
 
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
