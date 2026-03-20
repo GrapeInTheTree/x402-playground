@@ -3,7 +3,7 @@ package components
 import (
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
 // StatusBar renders a bottom status bar with navigation hints.

@@ -16,8 +16,8 @@ import (
 	evmserver "github.com/coinbase/x402/go/mechanisms/evm/exact/server"
 	"github.com/gin-gonic/gin"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
-	"github.com/GrapeInTheTree/x402-demo/internal/server"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/server"
 )
 
 func main() {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/demo"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/components"
+	"github.com/GrapeInTheTree/x402-playground/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/components"
 )
 
 // StepInfo holds the display data for a single step in a panel.

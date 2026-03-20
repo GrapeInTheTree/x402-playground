@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
 // Field represents a data field with its value and description.

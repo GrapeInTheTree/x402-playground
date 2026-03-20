@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">x402-demo</h1>
+  <h1 align="center">x402-playground</h1>
   <p align="center">
     <strong>HTTP-native micropayments for any EVM blockchain.</strong>
   </p>
@@ -10,7 +10,7 @@
 
 ---
 
-## Why x402-demo?
+## Why x402-playground?
 
 Most x402 examples are minimal snippets. This project is a **complete, working reference implementation** with real money tested on Base Sepolia:
 
@@ -103,8 +103,8 @@ Client Wallet                          PAY_TO Address
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/GrapeInTheTree/x402-demo.git
-cd x402-demo
+git clone https://github.com/GrapeInTheTree/x402-playground.git
+cd x402-playground
 make build
 ```
 
@@ -330,7 +330,7 @@ Executes payment on-chain. Auto-detects EIP-3009 vs Permit2 payload type.
 <summary>Project Structure</summary>
 
 ```
-x402-demo/
+x402-playground/
 ├── cmd/
 │   ├── facilitator/main.go    Facilitator HTTP server
 │   ├── resource/main.go       Resource HTTP server

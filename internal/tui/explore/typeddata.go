@@ -4,8 +4,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/components"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/components"
 )
 
 // TypedDataModel shows EIP-712 TypedData structure with field exploration.

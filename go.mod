@@ -1,4 +1,4 @@
-module github.com/GrapeInTheTree/x402-demo
+module github.com/GrapeInTheTree/x402-playground
 
 go 1.25.4
 

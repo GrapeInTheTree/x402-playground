@@ -8,13 +8,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/dashboard"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/explore"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/home"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/learn"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/practice"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/dashboard"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/explore"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/home"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/learn"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/practice"
 )
 
 func main() {

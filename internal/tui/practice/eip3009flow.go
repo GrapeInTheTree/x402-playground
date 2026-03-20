@@ -3,8 +3,8 @@ package practice
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
-	"github.com/GrapeInTheTree/x402-demo/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/demo"
 )
 
 // EIP3009FlowModel manages the EIP-3009 10-step payment flow.

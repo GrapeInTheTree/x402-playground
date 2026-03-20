@@ -16,7 +16,7 @@ import (
 	evmclient "github.com/coinbase/x402/go/mechanisms/evm/exact/client"
 	evmsigner "github.com/coinbase/x402/go/signers/evm"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
 )
 
 func main() {

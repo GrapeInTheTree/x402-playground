@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/GrapeInTheTree/x402-demo/pkg/health"
+	"github.com/GrapeInTheTree/x402-playground/pkg/health"
 )
 
 func WeatherHandler(c *gin.Context) {

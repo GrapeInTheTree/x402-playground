@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
 // CompareModel shows EIP-3009 vs Permit2 side-by-side.

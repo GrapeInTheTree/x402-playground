@@ -9,10 +9,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
-	"github.com/GrapeInTheTree/x402-demo/internal/demo"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui/components"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui/components"
 )
 
 type balancesMsg struct {

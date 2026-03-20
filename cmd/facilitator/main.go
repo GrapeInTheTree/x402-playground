@@ -14,10 +14,10 @@ import (
 	evmfacilitator "github.com/coinbase/x402/go/mechanisms/evm/exact/facilitator"
 	"github.com/gin-gonic/gin"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/config"
-	"github.com/GrapeInTheTree/x402-demo/internal/facilserver"
-	"github.com/GrapeInTheTree/x402-demo/internal/signer"
-	"github.com/GrapeInTheTree/x402-demo/pkg/health"
+	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/facilserver"
+	"github.com/GrapeInTheTree/x402-playground/internal/signer"
+	"github.com/GrapeInTheTree/x402-playground/pkg/health"
 )
 
 func main() {

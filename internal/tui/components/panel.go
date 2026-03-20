@@ -3,7 +3,7 @@ package components
 import (
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
 // Panel renders a bordered box with a title and content.

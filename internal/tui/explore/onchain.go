@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/GrapeInTheTree/x402-demo/internal/demo"
-	"github.com/GrapeInTheTree/x402-demo/internal/tui"
+	"github.com/GrapeInTheTree/x402-playground/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
 // balancesMsg carries fetched balance data.
