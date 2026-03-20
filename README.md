@@ -4,7 +4,7 @@
     <strong>HTTP-native micropayments for any EVM blockchain.</strong>
   </p>
   <p align="center">
-    A production-grade Go implementation of the <a href="https://x402.org/">x402 payment protocol</a> — three independently deployable components that demonstrate the full payment lifecycle with real on-chain USDC transfers.
+    A production-grade Go implementation of the <a href="https://x402.org/">x402 payment protocol</a> — four components including an interactive TUI explorer that demonstrate the full payment lifecycle with real on-chain USDC transfers.
   </p>
 </p>
 
@@ -16,15 +16,21 @@ Most x402 examples are minimal snippets. This project is a **complete, working r
 
 - **Full Lifecycle** — Facilitator, Resource Server, and Client CLI working end-to-end
 - **Dual Transfer Methods** — EIP-3009 and Permit2, switchable via one environment variable
-- **Interactive Demo** — 10-step walkthrough that explains every protocol detail as it executes
+- **Interactive TUI Explorer** — Bubbletea-based tool with Learn, Explore, Practice, and Dashboard modes
 - **Chain-Agnostic** — Configure any EVM chain via environment variables
-- **28 Unit Tests** — Config, handlers, signer, all covered
+- **42 Unit Tests** — Config, handlers, signer, protocol logic all covered
 
 ## How It Works
 
 ```
 Client CLI ──HTTP──> Resource Server ──HTTP──> Facilitator Server ──RPC──> EVM Chain
 cmd/client           cmd/resource              cmd/facilitator
+
+Explorer TUI (cmd/explorer) — Interactive learning & practice tool
+  ├── Learn     — 6 protocol topics with markdown rendering
+  ├── Explore   — Data structure inspector (headers, EIP-712, on-chain)
+  ├── Practice  — 10-step payment flow (EIP-3009, Permit2, side-by-side)
+  └── Dashboard — Wallet balances (live from chain)
 ```
 
 | Step | What happens |
@@ -117,7 +123,15 @@ PAY_TO_ADDRESS=0x...            # Receives USDC (no private key needed)
 ASSET_TRANSFER_METHOD=eip3009   # or permit2
 ```
 
-### 3. Run
+### 3. Explore the protocol (no servers needed)
+
+```bash
+make run-explorer        # Home menu — choose a mode
+make run-learn           # Learn mode — protocol concepts
+make run-dashboard       # Dashboard — wallet balances
+```
+
+### 4. Run the full payment flow
 
 ```bash
 # Terminal 1 — Facilitator (port 4022)
@@ -126,12 +140,12 @@ make run-facilitator
 # Terminal 2 — Resource Server (port 4021)
 make run-resource
 
-# Terminal 3 — Interactive demo
-make run-demo            # EIP-3009 mode
-make run-demo-permit2    # Permit2 mode
+# Terminal 3 — Practice flow
+make run-demo            # EIP-3009 practice (TUI)
+make run-demo-permit2    # Permit2 practice (TUI)
 ```
 
-### 4. Or use the simple client
+### 5. Or use the simple client
 
 ```bash
 make run-client
@@ -204,19 +218,20 @@ USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 ## Development
 
 ```bash
-make build           # Compile all binaries
-make test            # Run all 28 unit tests
+make build           # Compile all binaries (facilitator, resource, client, explorer)
+make test            # Run all 42 unit tests
 make lint            # Run golangci-lint
 make clean           # Remove compiled binaries
 ```
 
 | Package | Tests | What's tested |
 |---------|:-----:|---------------|
-| `internal/config` | 10 | Env loading, defaults, validation, Permit2 config |
+| `internal/config` | 13 | Env loading, defaults, validation, Permit2 config, ExplorerConfig |
+| `internal/demo` | 11 | Header decoding, JSON formatting, accept item parsing, flow state |
 | `internal/facilserver` | 9 | Verify/settle/supported handlers with mock |
 | `internal/server` | 4 | API response structure, health |
 | `internal/signer` | 5 | Key parsing, address derivation, Close() zeroing |
-| **Total** | **28** | |
+| **Total** | **42** | |
 
 ## Docker
 
@@ -320,13 +335,22 @@ x402-demo/
 │   ├── facilitator/main.go    Facilitator HTTP server
 │   ├── resource/main.go       Resource HTTP server
 │   ├── client/main.go         Client CLI
-│   ├── demo/main.go           Interactive 10-step walkthrough
+│   ├── explorer/main.go       Bubbletea TUI explorer (--mode, --flow flags)
 │   └── balance/main.go        Wallet balance checker
 ├── internal/
 │   ├── config/                Environment variable loading + validation
+│   ├── demo/                  Extracted protocol logic (types, balance, decoder, flow)
 │   ├── facilserver/           Facilitator HTTP handlers (/verify, /settle, /supported)
 │   ├── server/                Resource Server routes + API handlers
-│   └── signer/                FacilitatorEvmSigner (EIP-1559, EIP-712)
+│   ├── signer/                FacilitatorEvmSigner (EIP-1559, EIP-712)
+│   └── tui/                   TUI framework
+│       ├── app.go             Root model + page routing
+│       ├── components/        Reusable UI (menu, panel, jsonview, fieldexplorer, progress...)
+│       ├── home/              Main menu (4 modes)
+│       ├── learn/             6 protocol topics with markdown rendering
+│       ├── explore/           Data structure inspector (headers, EIP-712, on-chain)
+│       ├── practice/          Payment flow execution (EIP-3009, Permit2, side-by-side)
+│       └── dashboard/         Live wallet balances
 ├── pkg/health/                Shared health check type
 ├── .env.example               Environment variable template
 ├── Dockerfile                 Multi-stage build
@@ -344,6 +368,7 @@ x402-demo/
 | x402 SDK | [coinbase/x402/go](https://github.com/coinbase/x402) v2.6.0 |
 | EVM Client | [go-ethereum](https://github.com/ethereum/go-ethereum) v1.17 |
 | HTTP Framework | [Gin](https://github.com/gin-gonic/gin) v1.12 |
+| TUI Framework | [bubbletea](https://github.com/charmbracelet/bubbletea) + [lipgloss](https://github.com/charmbracelet/lipgloss) + [glamour](https://github.com/charmbracelet/glamour) |
 | Payment Scheme | EIP-3009 / Permit2 (exact scheme) |
 | Signatures | EIP-712 Typed Structured Data |
 | Transactions | EIP-1559 (dynamic fee) |
