@@ -28,3 +28,17 @@ type Score struct {
 	Correct   int
 	Questions int
 }
+
+// ModuleProgress tracks progress for a single question group.
+type ModuleProgress struct {
+	Name      string
+	Total     int
+	Attempted int
+	Passed    int
+}
+
+// QuizProgress tracks overall quiz progress shared between Learn and Dashboard.
+type QuizProgress struct {
+	Modules []ModuleProgress
+	Score   Score
+}

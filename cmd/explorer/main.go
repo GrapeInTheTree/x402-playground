@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/GrapeInTheTree/x402-playground/internal/config"
+	"github.com/GrapeInTheTree/x402-playground/internal/quiz"
 	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 	"github.com/GrapeInTheTree/x402-playground/internal/tui/dashboard"
 	"github.com/GrapeInTheTree/x402-playground/internal/tui/explore"
@@ -28,12 +29,13 @@ func main() {
 	cfg, _ := config.LoadExplorer()
 
 	flowFlag := *flow
+	sharedProgress := &quiz.QuizProgress{}
 	factories := map[tui.Page]tui.SubModelFactory{
 		tui.PageHome: func(w, h int) tui.SubModel {
 			return home.New(w, h)
 		},
 		tui.PageLearn: func(w, h int) tui.SubModel {
-			return learn.New(w, h)
+			return learn.New(w, h, sharedProgress)
 		},
 		tui.PageExplore: func(w, h int) tui.SubModel {
 			return explore.New(w, h)
@@ -45,7 +47,7 @@ func main() {
 			return practice.New(w, h, cfg)
 		},
 		tui.PageDashboard: func(w, h int) tui.SubModel {
-			return dashboard.New(w, h, cfg)
+			return dashboard.New(w, h, cfg, sharedProgress)
 		},
 	}
 

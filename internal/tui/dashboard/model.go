@@ -12,6 +12,7 @@ import (
 
 	"github.com/GrapeInTheTree/x402-playground/internal/config"
 	"github.com/GrapeInTheTree/x402-playground/internal/demo"
+	"github.com/GrapeInTheTree/x402-playground/internal/quiz"
 	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
@@ -27,13 +28,14 @@ type Model struct {
 	err      error
 	cfg      *config.ExplorerConfig
 	wallets  []demo.WalletInfo
+	progress *quiz.QuizProgress
 	spinner  spinner.Model
 	width    int
 	height   int
 }
 
 // New creates a new dashboard model with the given dimensions and configuration.
-func New(width, height int, cfg *config.ExplorerConfig) *Model {
+func New(width, height int, cfg *config.ExplorerConfig, progress *quiz.QuizProgress) *Model {
 	wallets := []demo.WalletInfo{}
 	if cfg != nil && cfg.PayToAddress != "" {
 		wallets = append(wallets, demo.WalletInfo{Name: "PAY_TO", Address: cfg.PayToAddress})
@@ -44,12 +46,13 @@ func New(width, height int, cfg *config.ExplorerConfig) *Model {
 	s.Style = lipgloss.NewStyle().Foreground(tui.ColorAccent)
 
 	return &Model{
-		loading: true,
-		cfg:     cfg,
-		wallets: wallets,
-		spinner: s,
-		width:   width,
-		height:  height,
+		loading:  true,
+		cfg:      cfg,
+		wallets:  wallets,
+		progress: progress,
+		spinner:  s,
+		width:    width,
+		height:   height,
 	}
 }
 
@@ -114,45 +117,59 @@ func (m *Model) SetSize(width, height int) {
 	m.height = height
 }
 
-// View renders the dashboard with network info and wallet balances.
+// View renders the dashboard with side-by-side wallet and progress panels.
 func (m *Model) View() string {
-	header := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(tui.ColorPrimary).
-		Render("Dashboard — Wallet Balances")
+	// lipgloss Width = content+padding, border added outside.
+	// RootModel padding = 4 chars. Each box border = 2 chars wide.
+	// (leftW+2) + 1(gap) + (rightW+2) <= m.width - 4
+	gap := 1
+	innerTotal := m.width - 4 - gap - 4
+	leftW := innerTotal / 2
+	rightW := innerTotal - leftW
 
-	var content string
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(tui.ColorBorder).
+		Padding(0, 1)
 
-	if m.loading {
-		content = m.spinner.View() + " Loading balances from chain..."
-	} else if m.err != nil {
-		content = tui.ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
-	} else if len(m.balances) == 0 {
-		content = tui.MutedStyle.Render("No wallet data available.")
-	} else {
-		content = m.renderBalances()
+	// ── Left panel: Wallet Balances ──
+	leftBox := boxStyle.Width(leftW).Render(m.renderWalletPanel())
+
+	// ── Right panel: Quiz Progress ──
+	rightContent := m.renderProgressPanel(rightW)
+	rightBox := boxStyle.Width(rightW).Render(rightContent)
+
+	// Side-by-side if wide enough, stacked otherwise
+	if innerTotal >= 50 {
+		return lipgloss.JoinHorizontal(lipgloss.Top, leftBox, " ", rightBox)
 	}
+	return lipgloss.JoinVertical(lipgloss.Left, leftBox, "", rightBox)
+}
+
+func (m *Model) renderWalletPanel() string {
+	title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorSecondary).
+		Render("Wallet Balances")
 
 	network := ""
 	if m.cfg != nil {
 		network = m.cfg.Network
 	}
-	networkInfo := tui.MutedStyle.Render(
-		fmt.Sprintf("Network: %s  |  USDC: %s", network, m.usdcAddr()))
+	netLine := tui.MutedStyle.Render(fmt.Sprintf("Network: %s", network))
+	usdcLine := tui.MutedStyle.Render(fmt.Sprintf("USDC:    %s", m.usdcAddr()))
 
-	divider := lipgloss.NewStyle().
-		Foreground(tui.ColorBorder).
-		Render(strings.Repeat("─", min(m.width-8, 60)))
+	var body string
+	if m.loading {
+		body = m.spinner.View() + " Loading balances..."
+	} else if m.err != nil {
+		body = tui.ErrorStyle.Render(fmt.Sprintf("Error: %v", m.err))
+	} else if len(m.balances) == 0 {
+		body = tui.MutedStyle.Render("No wallet data.")
+	} else {
+		body = m.renderBalances()
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		header,
-		"",
-		divider,
-		"",
-		networkInfo,
-		"",
-		content,
-	)
+		title, "", netLine, usdcLine, "", body)
 }
 
 func (m *Model) usdcAddr() string {
@@ -164,6 +181,119 @@ func (m *Model) usdcAddr() string {
 		return addr
 	}
 	return "unknown"
+}
+
+// shortModuleName maps full group titles to compact display names.
+func shortModuleName(name string) string {
+	switch {
+	case strings.Contains(name, "LEVEL 1"):
+		return "Go Basics"
+	case strings.Contains(name, "LEVEL 2"):
+		return "Go Standards"
+	case strings.Contains(name, "LEVEL 3"):
+		return "Go Protocol"
+	case strings.Contains(name, "LEVEL 4"):
+		return "Go Advanced"
+	case strings.Contains(name, "M1:"):
+		return "Sol Foundations"
+	case strings.Contains(name, "M2:"):
+		return "Sol ERC-20"
+	case strings.Contains(name, "M3:"):
+		return "Sol Signatures"
+	case strings.Contains(name, "M4:"):
+		return "Sol Gasless"
+	case strings.Contains(name, "M5:"):
+		return "Sol Advanced"
+	case strings.Contains(name, "M6:"):
+		return "Sol x402"
+	default:
+		return name
+	}
+}
+
+// progressBar renders a uniform-width bar: filled portion + empty portion.
+func progressBar(passed, total, width int) string {
+	filled := 0
+	if total > 0 {
+		filled = passed * width / total
+	}
+	filledStr := lipgloss.NewStyle().Foreground(tui.ColorSuccess).
+		Render(strings.Repeat("━", filled))
+	emptyStr := lipgloss.NewStyle().Foreground(tui.ColorBorder).
+		Render(strings.Repeat("─", width-filled))
+	return filledStr + emptyStr
+}
+
+func (m *Model) renderProgressPanel(panelW int) string {
+	if m.progress == nil || len(m.progress.Modules) == 0 {
+		title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorSecondary).
+			Render("Quiz Progress")
+		hint := tui.MutedStyle.Render("Complete quizzes in Learn\nto see progress here.")
+		return lipgloss.JoinVertical(lipgloss.Left, title, "", hint)
+	}
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorSecondary).
+		Render("Quiz Progress")
+
+	// Totals
+	totalQ, totalPassed, totalAttempted := 0, 0, 0
+	for _, mod := range m.progress.Modules {
+		totalQ += mod.Total
+		totalPassed += mod.Passed
+		totalAttempted += mod.Attempted
+	}
+
+	pct := 0
+	if totalQ > 0 {
+		pct = totalPassed * 100 / totalQ
+	}
+
+	// Inner width = panelW - border(2) - padding(2)
+	innerW := panelW - 4
+
+	// ── Overall progress bar (full inner width) ──
+	overallBarW := max(innerW-14, 8) // leave room for " 0% (0/36)"
+	overallBar := progressBar(totalPassed, totalQ, overallBarW)
+	overallLine := overallBar + tui.MutedStyle.Render(
+		fmt.Sprintf(" %d%% (%d/%d)", pct, totalPassed, totalQ))
+
+	// ── Per-module rows: [name] [bar] [count] [check] ──
+	// Layout: nameCol + 1 + barW + 1 + countCol + 2 = innerW
+	const nameCol = 16
+	const countCol = 4
+	barW := max(innerW-nameCol-countCol-4, 4)
+
+	nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")).Width(nameCol)
+	countStyle := lipgloss.NewStyle().Foreground(tui.ColorMuted).Width(countCol).Align(lipgloss.Right)
+	checkStyle := lipgloss.NewStyle().Foreground(tui.ColorSuccess)
+
+	var rows strings.Builder
+	for _, mod := range m.progress.Modules {
+		bar := progressBar(mod.Passed, mod.Total, barW)
+		check := "  "
+		if mod.Passed == mod.Total && mod.Total > 0 {
+			check = " " + checkStyle.Render("\u2713")
+		}
+		fmt.Fprintf(&rows, "%s %s %s%s\n",
+			nameStyle.Render(shortModuleName(mod.Name)),
+			bar,
+			countStyle.Render(fmt.Sprintf("%d/%d", mod.Passed, mod.Total)),
+			check)
+	}
+
+	// Summary
+	failed := totalAttempted - totalPassed
+	summary := tui.MutedStyle.Render(
+		fmt.Sprintf("Attempted: %d  Passed: %d  Failed: %d", totalAttempted, totalPassed, failed))
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		"",
+		overallLine,
+		"",
+		rows.String(),
+		summary,
+	)
 }
 
 func (m *Model) renderBalances() string {
