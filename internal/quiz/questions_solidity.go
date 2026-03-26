@@ -1,6 +1,6 @@
 package quiz
 
-// SolidityQuestions returns all Solidity quiz questions organized into 6 modules.
+// SolidityQuestions returns all Solidity quiz questions organized into 7 modules.
 func SolidityQuestions() []Question {
 	var all []Question
 	all = append(all, solModule1Foundations()...)
@@ -9,6 +9,7 @@ func SolidityQuestions() []Question {
 	all = append(all, solModule4Gasless()...)
 	all = append(all, solModule5Advanced()...)
 	all = append(all, solModule6X402()...)
+	all = append(all, solModule7ERC8004()...)
 	return all
 }
 
@@ -2625,6 +2626,1122 @@ contract PaymentProcessorTest is Test {
 			"bytes32 paymentId = keccak256(abi.encode(req.from, req.to, req.nonce));",
 			`if (req.amount < requiredAmount) return (false, "insufficient amount"); etc.`,
 			"settle: require(!usedNonces[req.nonce]); usedNonces[req.nonce] = true; settledPayments[paymentId] = true;",
+		},
+	}
+}
+
+// ============================================================
+// MODULE 7: ERC-8004 — Autonomous Agent Identity & Reputation
+// ============================================================
+
+func solModule7ERC8004() []Question {
+	return []Question{
+		solERC8004Identity(),
+		solERC8004Metadata(),
+		solERC8004Feedback(),
+		solERC8004SelfPrevention(),
+		solERC8004Validation(),
+		solERC8004Wallet(),
+		solERC8004ReputationSummary(),
+		solERC8004X402Integration(),
+	}
+}
+
+func solERC8004Identity() Question {
+	return Question{
+		ID: "sol-erc8004-identity", Title: "Agent Identity Registry",
+		Difficulty: "easy", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `ERC-8004 defines an on-chain identity and reputation system for autonomous agents.
+The first building block is an identity registry where each agent gets a unique ID,
+an owner (the address that registered it), and a URI pointing to off-chain metadata
+(e.g., an IPFS link describing the agent's capabilities).
+
+Think of it like ERC-721 for agents: each agent is a non-fungible on-chain entity
+with a numeric ID. However, unlike NFTs meant for collectibles, agent identities
+are functional — they anchor reputation, wallets, and service discovery.
+
+The registry uses a simple auto-incrementing counter starting at 1. When an address
+calls register(), it mints a new agent identity, stores the URI, records the owner,
+emits a Registered event, and returns the new agent ID.
+
+Implement the core identity registry with register, ownerOf, and getAgentURI.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract AgentIdentityRegistry {
+    uint256 private _nextAgentId;
+    mapping(uint256 => string) private _agentURIs;
+    mapping(uint256 => address) private _owners;
+
+    // TODO 1: Define event Registered(uint256 indexed agentId, address indexed owner, string agentURI)
+
+    constructor() {
+        // TODO 2: Initialize _nextAgentId to 1 (agent IDs start at 1, not 0)
+    }
+
+    function register(string calldata agentURI) external returns (uint256) {
+        // TODO 3: Get the current _nextAgentId as the new agentId
+        // TODO 4: Store the owner as msg.sender in _owners[agentId]
+        // TODO 5: Store the URI in _agentURIs[agentId]
+        // TODO 6: Increment _nextAgentId
+        // TODO 7: Emit the Registered event
+        // TODO 8: Return the agentId
+        return 0;
+    }
+
+    function ownerOf(uint256 agentId) external view returns (address) {
+        // TODO 9: Return the owner of the given agentId
+        // Require that the agent exists (owner != address(0))
+        return address(0);
+    }
+
+    function getAgentURI(uint256 agentId) external view returns (string memory) {
+        // TODO 10: Require agent exists, then return the URI
+        return "";
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract AgentIdentityRegistryTest is Test {
+    AgentIdentityRegistry registry;
+    address alice = address(1);
+    address bob = address(2);
+
+    function setUp() public {
+        registry = new AgentIdentityRegistry();
+    }
+
+    function test_RegisterAgent() public {
+        vm.prank(alice);
+        uint256 id = registry.register("ipfs://agent1");
+        assertEq(id, 1);
+        assertEq(registry.ownerOf(1), alice);
+        assertEq(registry.getAgentURI(1), "ipfs://agent1");
+    }
+
+    function test_SecondAgentGetsId2() public {
+        vm.prank(alice);
+        registry.register("ipfs://agent1");
+
+        vm.prank(bob);
+        uint256 id2 = registry.register("ipfs://agent2");
+        assertEq(id2, 2);
+        assertEq(registry.ownerOf(2), bob);
+    }
+
+    function test_OwnerOfNonexistent() public {
+        vm.expectRevert();
+        registry.ownerOf(999);
+    }
+
+    function test_GetURINonexistent() public {
+        vm.expectRevert();
+        registry.getAgentURI(999);
+    }
+
+    function test_RegisterEmitsEvent() public {
+        vm.prank(alice);
+        vm.expectEmit(true, true, false, true);
+        emit AgentIdentityRegistry.Registered(1, alice, "ipfs://agent1");
+        registry.register("ipfs://agent1");
+    }
+}
+`,
+		Hints: []string{
+			"constructor: _nextAgentId = 1;",
+			"register: uint256 agentId = _nextAgentId; _owners[agentId] = msg.sender; _agentURIs[agentId] = agentURI; _nextAgentId++;",
+			"ownerOf: require(_owners[agentId] != address(0), \"agent not found\"); return _owners[agentId];",
+		},
+	}
+}
+
+func solERC8004Metadata() Question {
+	return Question{
+		ID: "sol-erc8004-metadata", Title: "Agent Metadata Storage",
+		Difficulty: "easy", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `Beyond the base URI, agents need structured key-value metadata stored on-chain.
+This allows discoverability — other contracts or off-chain indexers can query an
+agent's capabilities, version, supported protocols, etc.
+
+The metadata system uses a nested mapping: agentId => key => value, where both
+key and value are strings. Only the agent's owner can set metadata for that agent.
+
+One important constraint: the key "agentWallet" is reserved for the wallet
+verification system (covered in a later question). The contract must reject
+attempts to set this key via the metadata function. String comparison in
+Solidity is done by comparing keccak256 hashes of the strings.
+
+Implement the metadata storage with owner-only writes and reserved key protection.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract AgentMetadata {
+    uint256 private _nextAgentId;
+    mapping(uint256 => address) private _owners;
+    mapping(uint256 => mapping(string => string)) private _metadata;
+
+    constructor() {
+        _nextAgentId = 1;
+    }
+
+    function register() external returns (uint256) {
+        uint256 agentId = _nextAgentId;
+        _owners[agentId] = msg.sender;
+        _nextAgentId++;
+        return agentId;
+    }
+
+    function ownerOf(uint256 agentId) public view returns (address) {
+        require(_owners[agentId] != address(0), "agent not found");
+        return _owners[agentId];
+    }
+
+    function setMetadata(uint256 agentId, string calldata key, string calldata value) external {
+        // TODO 1: Require that msg.sender is the owner of agentId
+        // TODO 2: Require that the key is NOT "agentWallet" (reserved)
+        //         Use keccak256(abi.encodePacked(key)) != keccak256(abi.encodePacked("agentWallet"))
+        // TODO 3: Store the value in _metadata[agentId][key]
+    }
+
+    function getMetadata(uint256 agentId, string calldata key) external view returns (string memory) {
+        // TODO 4: Return the metadata value for the given agent and key
+        return "";
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract AgentMetadataTest is Test {
+    AgentMetadata meta;
+    address alice = address(1);
+    address bob = address(2);
+
+    function setUp() public {
+        meta = new AgentMetadata();
+        vm.prank(alice);
+        meta.register(); // agentId = 1
+    }
+
+    function test_SetAndGetMetadata() public {
+        vm.prank(alice);
+        meta.setMetadata(1, "version", "1.0.0");
+        assertEq(meta.getMetadata(1, "version"), "1.0.0");
+    }
+
+    function test_OverwriteMetadata() public {
+        vm.prank(alice);
+        meta.setMetadata(1, "protocol", "x402");
+        vm.prank(alice);
+        meta.setMetadata(1, "protocol", "x402-v2");
+        assertEq(meta.getMetadata(1, "protocol"), "x402-v2");
+    }
+
+    function test_ReservedKeyReverts() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        meta.setMetadata(1, "agentWallet", "0xabc");
+    }
+
+    function test_OnlyOwnerCanSet() public {
+        vm.prank(bob);
+        vm.expectRevert();
+        meta.setMetadata(1, "version", "hacked");
+    }
+
+    function test_GetUnsetMetadata() public view {
+        string memory val = meta.getMetadata(1, "nonexistent");
+        assertEq(bytes(val).length, 0);
+    }
+}
+`,
+		Hints: []string{
+			"require(msg.sender == ownerOf(agentId), \"not owner\");",
+			"require(keccak256(abi.encodePacked(key)) != keccak256(abi.encodePacked(\"agentWallet\")), \"reserved key\");",
+			"_metadata[agentId][key] = value; / return _metadata[agentId][key];",
+		},
+	}
+}
+
+func solERC8004Feedback() Question {
+	return Question{
+		ID: "sol-erc8004-feedback", Title: "Reputation Feedback",
+		Difficulty: "medium", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `The reputation system in ERC-8004 allows anyone to leave feedback on an agent.
+Each feedback entry is a struct containing the provider (who left it), the target
+agent ID, a signed integer value (positive or negative), a free-text tag describing
+the context (e.g., "payment", "response-quality"), and a timestamp.
+
+Feedback is stored per-agent in an array, allowing enumeration. The feedbackCount
+function returns the total number of feedbacks for an agent, and getFeedback returns
+a specific entry by index.
+
+Crucially, feedback can be revoked — but only by the original provider. This prevents
+spam while allowing providers to correct mistakes. Revocation sets the feedback value
+to zero and clears the tag, but preserves the slot to maintain index stability.
+
+Implement the reputation feedback system with give, get, count, and revoke operations.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract ReputationRegistry {
+    struct Feedback {
+        address provider;
+        uint256 agentId;
+        int256 value;
+        string tag;
+        uint64 timestamp;
+    }
+
+    // TODO 1: Declare a mapping from uint256 (agentId) to an array of Feedback structs
+    //         e.g., mapping(uint256 => Feedback[]) private _feedbacks;
+
+    function giveFeedback(uint256 agentId, int256 value, string calldata tag) external {
+        // TODO 2: Create a new Feedback struct with msg.sender as provider,
+        //         the given agentId, value, tag, and block.timestamp as uint64
+        // TODO 3: Push the struct into the feedbacks array for this agentId
+    }
+
+    function getFeedback(uint256 agentId, uint256 index)
+        external view
+        returns (address provider, int256 value, string memory tag, uint64 timestamp)
+    {
+        // TODO 4: Require index < length of the feedbacks array for this agentId
+        // TODO 5: Return the provider, value, tag, and timestamp fields
+        return (address(0), 0, "", 0);
+    }
+
+    function getFeedbackCount(uint256 agentId) external view returns (uint256) {
+        // TODO 6: Return the length of the feedbacks array for this agentId
+        return 0;
+    }
+
+    function revokeFeedback(uint256 agentId, uint256 index) external {
+        // TODO 7: Require index is valid
+        // TODO 8: Require msg.sender == feedback.provider (only the original provider can revoke)
+        // TODO 9: Set the feedback value to 0 and tag to "" (revoked)
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract ReputationRegistryTest is Test {
+    ReputationRegistry rep;
+    address alice = address(1);
+    address bob = address(2);
+
+    function setUp() public {
+        rep = new ReputationRegistry();
+    }
+
+    function test_GiveFeedback() public {
+        vm.warp(1000);
+        vm.prank(alice);
+        rep.giveFeedback(1, 80, "good-service");
+        assertEq(rep.getFeedbackCount(1), 1);
+    }
+
+    function test_GetFeedbackFields() public {
+        vm.warp(2000);
+        vm.prank(alice);
+        rep.giveFeedback(1, -20, "slow-response");
+
+        (address provider, int256 value, string memory tag, uint64 ts) = rep.getFeedback(1, 0);
+        assertEq(provider, alice);
+        assertEq(value, -20);
+        assertEq(tag, "slow-response");
+        assertEq(ts, 2000);
+    }
+
+    function test_MultipleFeedbacks() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, 50, "ok");
+        vm.prank(bob);
+        rep.giveFeedback(1, 90, "excellent");
+        assertEq(rep.getFeedbackCount(1), 2);
+    }
+
+    function test_RevokeFeedback() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, 80, "good");
+
+        vm.prank(alice);
+        rep.revokeFeedback(1, 0);
+
+        (, int256 value, string memory tag,) = rep.getFeedback(1, 0);
+        assertEq(value, 0);
+        assertEq(bytes(tag).length, 0);
+    }
+
+    function test_RevokeNotProviderReverts() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, 80, "good");
+
+        vm.prank(bob);
+        vm.expectRevert();
+        rep.revokeFeedback(1, 0);
+    }
+}
+`,
+		Hints: []string{
+			"mapping(uint256 => Feedback[]) private _feedbacks;",
+			"giveFeedback: _feedbacks[agentId].push(Feedback(msg.sender, agentId, value, tag, uint64(block.timestamp)));",
+			"revokeFeedback: require(msg.sender == _feedbacks[agentId][index].provider); then set value=0 and tag=\"\"",
+		},
+	}
+}
+
+func solERC8004SelfPrevention() Question {
+	return Question{
+		ID: "sol-erc8004-self-prevention", Title: "Self-Feedback Prevention",
+		Difficulty: "medium", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `A critical integrity rule in ERC-8004's reputation system is that an agent's
+owner must not be able to give feedback to their own agent. Without this check,
+owners could inflate their agent's reputation by leaving positive reviews.
+
+This guard is implemented as a separate contract that cross-references the
+identity registry. The ReputationGuard takes the identity registry address
+in its constructor and calls ownerOf() on it to check whether the caller
+owns the target agent.
+
+This pattern demonstrates contract composability: the reputation contract
+depends on an external identity registry via an interface. In production, these
+would be separate deployed contracts, with the reputation system querying
+identity ownership on every feedback submission.
+
+Implement the self-feedback prevention guard with an interface to the identity registry.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// TODO 1: Define interface IIdentityRegistry with a single function:
+//         ownerOf(uint256 agentId) external view returns (address)
+
+contract ReputationGuard {
+    struct Feedback {
+        address provider;
+        uint256 agentId;
+        int256 value;
+        string tag;
+    }
+
+    // TODO 2: Declare a state variable for the identity registry (IIdentityRegistry)
+    // TODO 3: Declare a mapping from uint256 (agentId) to Feedback array
+
+    constructor(address _identityRegistry) {
+        // TODO 4: Store the identity registry reference
+        //         Cast address to IIdentityRegistry
+    }
+
+    function giveFeedback(uint256 agentId, int256 value, string calldata tag) external {
+        // TODO 5: Get the owner of the agentId from the identity registry
+        // TODO 6: Require that msg.sender is NOT the owner (prevent self-feedback)
+        // TODO 7: Store the feedback
+    }
+
+    function getFeedbackCount(uint256 agentId) external view returns (uint256) {
+        // TODO 8: Return the count of feedbacks for this agentId
+        return 0;
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+// Mock identity registry for testing
+contract MockIdentityRegistry {
+    mapping(uint256 => address) private _owners;
+
+    function setOwner(uint256 agentId, address owner) external {
+        _owners[agentId] = owner;
+    }
+
+    function ownerOf(uint256 agentId) external view returns (address) {
+        require(_owners[agentId] != address(0), "not found");
+        return _owners[agentId];
+    }
+}
+
+contract ReputationGuardTest is Test {
+    MockIdentityRegistry mockRegistry;
+    ReputationGuard guard;
+    address alice = address(1);
+    address bob = address(2);
+
+    function setUp() public {
+        mockRegistry = new MockIdentityRegistry();
+        mockRegistry.setOwner(1, alice);
+        guard = new ReputationGuard(address(mockRegistry));
+    }
+
+    function test_NonOwnerCanGiveFeedback() public {
+        vm.prank(bob);
+        guard.giveFeedback(1, 80, "great-agent");
+        assertEq(guard.getFeedbackCount(1), 1);
+    }
+
+    function test_OwnerCannotSelfFeedback() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        guard.giveFeedback(1, 100, "im-the-best");
+    }
+
+    function test_MultipleFeedbacksFromDifferentUsers() public {
+        vm.prank(bob);
+        guard.giveFeedback(1, 50, "ok");
+
+        address charlie = address(3);
+        vm.prank(charlie);
+        guard.giveFeedback(1, 90, "excellent");
+
+        assertEq(guard.getFeedbackCount(1), 2);
+    }
+
+    function test_NegativeFeedbackAllowed() public {
+        vm.prank(bob);
+        guard.giveFeedback(1, -30, "poor-service");
+        assertEq(guard.getFeedbackCount(1), 1);
+    }
+}
+`,
+		Hints: []string{
+			"interface IIdentityRegistry { function ownerOf(uint256 agentId) external view returns (address); }",
+			"IIdentityRegistry public identityRegistry; constructor: identityRegistry = IIdentityRegistry(_identityRegistry);",
+			"require(msg.sender != identityRegistry.ownerOf(agentId), \"self-feedback not allowed\");",
+		},
+	}
+}
+
+func solERC8004Validation() Question {
+	return Question{
+		ID: "sol-erc8004-validation", Title: "Validation Request & Response",
+		Difficulty: "medium", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `ERC-8004 includes a validation mechanism where agent owners can request
+third-party validation of their agent's capabilities. A designated validator
+reviews the agent and responds with a score (0-100) and a textual reason.
+
+The flow works like this:
+1. The agent owner calls requestValidation(), specifying a validator address
+   and arbitrary data describing what should be validated.
+2. The designated validator calls respond() with a score and reason.
+3. Anyone can query the validation result by request ID.
+
+This on-chain validation creates a verifiable audit trail. Validators could be
+trusted third parties, DAOs, or even other autonomous agents with established
+reputation.
+
+Only the agent's original registrant can request validation, and only the
+designated validator can respond. Scores must be between 0 and 100 inclusive.
+
+Implement the validation request and response system.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract ValidationRegistry {
+    struct ValidationRequest {
+        uint256 agentId;
+        address requester;
+        address validator;
+        bytes data;
+    }
+
+    struct ValidationResponse {
+        uint8 score;
+        string reason;
+        bool responded;
+    }
+
+    mapping(uint256 => address) private _agentOwners;
+    uint256 private _nextAgentId;
+    uint256 private _nextRequestId;
+
+    // TODO 1: Declare a mapping from uint256 (requestId) to ValidationRequest
+    // TODO 2: Declare a mapping from uint256 (requestId) to ValidationResponse
+
+    constructor() {
+        _nextAgentId = 1;
+        _nextRequestId = 1;
+    }
+
+    function registerAgent() external returns (uint256) {
+        uint256 agentId = _nextAgentId;
+        _agentOwners[agentId] = msg.sender;
+        _nextAgentId++;
+        return agentId;
+    }
+
+    function requestValidation(uint256 agentId, address validator, bytes calldata data)
+        external returns (uint256)
+    {
+        // TODO 3: Require msg.sender is the owner of the agent
+        // TODO 4: Create the request with the current _nextRequestId
+        // TODO 5: Store the ValidationRequest (agentId, msg.sender, validator, data)
+        // TODO 6: Increment _nextRequestId and return the request ID
+        return 0;
+    }
+
+    function respond(uint256 requestId, uint8 score, string calldata reason) external {
+        // TODO 7: Require the request exists (requester != address(0))
+        // TODO 8: Require msg.sender is the designated validator
+        // TODO 9: Require score <= 100
+        // TODO 10: Require not already responded
+        // TODO 11: Store the ValidationResponse (score, reason, responded=true)
+    }
+
+    function getResponse(uint256 requestId)
+        external view returns (uint8 score, string memory reason, bool responded)
+    {
+        // TODO 12: Return the response fields
+        return (0, "", false);
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract ValidationRegistryTest is Test {
+    ValidationRegistry registry;
+    address alice = address(1);
+    address bob = address(2);
+    address validator = address(3);
+
+    function setUp() public {
+        registry = new ValidationRegistry();
+        vm.prank(alice);
+        registry.registerAgent(); // agentId = 1
+    }
+
+    function test_RequestAndRespond() public {
+        vm.prank(alice);
+        uint256 reqId = registry.requestValidation(1, validator, "check-api");
+        assertEq(reqId, 1);
+
+        vm.prank(validator);
+        registry.respond(1, 85, "API works well");
+
+        (uint8 score, string memory reason, bool responded) = registry.getResponse(1);
+        assertEq(score, 85);
+        assertEq(reason, "API works well");
+        assertTrue(responded);
+    }
+
+    function test_WrongValidatorReverts() public {
+        vm.prank(alice);
+        registry.requestValidation(1, validator, "check");
+
+        vm.prank(bob);
+        vm.expectRevert();
+        registry.respond(1, 80, "not my job");
+    }
+
+    function test_ScoreAbove100Reverts() public {
+        vm.prank(alice);
+        registry.requestValidation(1, validator, "check");
+
+        vm.prank(validator);
+        vm.expectRevert();
+        registry.respond(1, 101, "too high");
+    }
+
+    function test_NonOwnerCannotRequest() public {
+        vm.prank(bob);
+        vm.expectRevert();
+        registry.requestValidation(1, validator, "hack");
+    }
+
+    function test_DoubleRespondReverts() public {
+        vm.prank(alice);
+        registry.requestValidation(1, validator, "check");
+
+        vm.prank(validator);
+        registry.respond(1, 90, "good");
+
+        vm.prank(validator);
+        vm.expectRevert();
+        registry.respond(1, 95, "even better");
+    }
+}
+`,
+		Hints: []string{
+			"mapping(uint256 => ValidationRequest) private _requests; mapping(uint256 => ValidationResponse) private _responses;",
+			"requestValidation: require(_agentOwners[agentId] == msg.sender); _requests[reqId] = ValidationRequest(agentId, msg.sender, validator, data);",
+			"respond: require(_requests[requestId].validator == msg.sender); require(score <= 100); require(!_responses[requestId].responded);",
+		},
+	}
+}
+
+func solERC8004Wallet() Question {
+	return Question{
+		ID: "sol-erc8004-wallet", Title: "Agent Wallet Verification via EIP-712",
+		Difficulty: "hard", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `Each agent in ERC-8004 can have an associated wallet address. This wallet is
+where the agent receives and sends payments (e.g., via x402). Setting the wallet
+requires cryptographic proof that the wallet holder consents — you cannot assign
+an arbitrary address as your agent's wallet.
+
+The verification uses EIP-712 typed data signatures. The wallet holder signs a
+message containing the agentId, their wallet address, and a deadline. The contract
+verifies this signature on-chain using ecrecover and the EIP-712 digest.
+
+The EIP-712 domain includes the contract name ("AgentWalletRegistry"), version "1",
+the chain ID, and the verifying contract address. The type hash covers
+"SetAgentWallet(uint256 agentId,address wallet,uint256 deadline)".
+
+This pattern ensures only willing wallet holders can be linked to agents,
+preventing impersonation. The deadline prevents replay of old signatures.
+
+Implement the wallet verification contract with EIP-712 signature validation.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract AgentWalletRegistry {
+    mapping(uint256 => address) private _owners;
+    mapping(uint256 => address) public agentWallets;
+    uint256 private _nextAgentId;
+
+    // TODO 1: Declare a public immutable bytes32 DOMAIN_SEPARATOR
+    // TODO 2: Declare a public constant bytes32 SET_WALLET_TYPEHASH =
+    //         keccak256("SetAgentWallet(uint256 agentId,address wallet,uint256 deadline)")
+
+    constructor() {
+        _nextAgentId = 1;
+        // TODO 3: Compute DOMAIN_SEPARATOR using keccak256(abi.encode(
+        //     keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+        //     keccak256(bytes("AgentWalletRegistry")),
+        //     keccak256(bytes("1")),
+        //     block.chainid,
+        //     address(this)
+        // ))
+    }
+
+    function registerAgent() external returns (uint256) {
+        uint256 agentId = _nextAgentId;
+        _owners[agentId] = msg.sender;
+        _nextAgentId++;
+        return agentId;
+    }
+
+    function setAgentWallet(
+        uint256 agentId,
+        address wallet,
+        uint256 deadline,
+        uint8 v, bytes32 r, bytes32 s
+    ) external {
+        // TODO 4: Require msg.sender is the owner of the agent
+        // TODO 5: Require block.timestamp <= deadline (signature not expired)
+        // TODO 6: Compute the struct hash: keccak256(abi.encode(SET_WALLET_TYPEHASH, agentId, wallet, deadline))
+        // TODO 7: Compute the EIP-712 digest: keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash))
+        // TODO 8: Recover the signer using ecrecover(digest, v, r, s)
+        // TODO 9: Require recovered signer == wallet (wallet holder consents)
+        // TODO 10: Store agentWallets[agentId] = wallet
+    }
+
+    function clearWallet(uint256 agentId) external {
+        // TODO 11: Require msg.sender is the owner of the agent
+        // TODO 12: Delete agentWallets[agentId]
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract AgentWalletRegistryTest is Test {
+    AgentWalletRegistry registry;
+    address alice = address(1);
+    uint256 walletPk = 0xBEEF;
+    address walletAddr;
+
+    function setUp() public {
+        registry = new AgentWalletRegistry();
+        walletAddr = vm.addr(walletPk);
+        vm.prank(alice);
+        registry.registerAgent(); // agentId = 1
+    }
+
+    function _sign(uint256 agentId, address wallet, uint256 deadline)
+        internal view returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        bytes32 structHash = keccak256(abi.encode(
+            registry.SET_WALLET_TYPEHASH(),
+            agentId, wallet, deadline
+        ));
+        bytes32 digest = keccak256(abi.encodePacked(
+            "\x19\x01",
+            registry.DOMAIN_SEPARATOR(),
+            structHash
+        ));
+        (v, r, s) = vm.sign(walletPk, digest);
+    }
+
+    function test_SetAgentWallet() public {
+        vm.warp(100);
+        (uint8 v, bytes32 r, bytes32 s) = _sign(1, walletAddr, 200);
+
+        vm.prank(alice);
+        registry.setAgentWallet(1, walletAddr, 200, v, r, s);
+
+        assertEq(registry.agentWallets(1), walletAddr);
+    }
+
+    function test_ExpiredDeadlineReverts() public {
+        vm.warp(100);
+        (uint8 v, bytes32 r, bytes32 s) = _sign(1, walletAddr, 50);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        registry.setAgentWallet(1, walletAddr, 50, v, r, s);
+    }
+
+    function test_WrongSignerReverts() public {
+        vm.warp(100);
+        // Sign with a different key
+        uint256 otherPk = 0xDEAD;
+        bytes32 structHash = keccak256(abi.encode(
+            registry.SET_WALLET_TYPEHASH(),
+            1, walletAddr, 200
+        ));
+        bytes32 digest = keccak256(abi.encodePacked(
+            "\x19\x01",
+            registry.DOMAIN_SEPARATOR(),
+            structHash
+        ));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(otherPk, digest);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        registry.setAgentWallet(1, walletAddr, 200, v, r, s);
+    }
+
+    function test_ClearWallet() public {
+        vm.warp(100);
+        (uint8 v, bytes32 r, bytes32 s) = _sign(1, walletAddr, 200);
+        vm.prank(alice);
+        registry.setAgentWallet(1, walletAddr, 200, v, r, s);
+
+        vm.prank(alice);
+        registry.clearWallet(1);
+        assertEq(registry.agentWallets(1), address(0));
+    }
+}
+`,
+		Hints: []string{
+			"bytes32 public immutable DOMAIN_SEPARATOR; bytes32 public constant SET_WALLET_TYPEHASH = keccak256(\"SetAgentWallet(uint256 agentId,address wallet,uint256 deadline)\");",
+			"bytes32 structHash = keccak256(abi.encode(SET_WALLET_TYPEHASH, agentId, wallet, deadline)); bytes32 digest = keccak256(abi.encodePacked(\"\\x19\\x01\", DOMAIN_SEPARATOR, structHash));",
+			"address signer = ecrecover(digest, v, r, s); require(signer == wallet, \"invalid signature\");",
+		},
+	}
+}
+
+func solERC8004ReputationSummary() Question {
+	return Question{
+		ID: "sol-erc8004-reputation-summary", Title: "Reputation Summary with WAD",
+		Difficulty: "hard", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `Aggregating reputation into a single summary is essential for making trust
+decisions on-chain. The summary includes the average feedback score, total count,
+and breakdowns of positive vs negative feedback.
+
+Since Solidity has no floating-point numbers, we use WAD (Word as Decimal) math:
+multiply values by 1e18 before division to preserve precision. For example,
+an average of 40 is represented as 40 * 10^18 = 40000000000000000000.
+
+The formula: averageWAD = (sum * WAD) / count, where WAD = 1e18.
+
+This is the same precision pattern used throughout DeFi — Uniswap, Aave, and
+MakerDAO all use WAD or similar fixed-point representations. In x402, USDC
+amounts use 6 decimals, but reputation scores use 18-decimal WAD for maximum
+precision in on-chain calculations.
+
+The summary function should handle the zero-feedback case by returning all zeros.
+Positive feedback has value > 0, negative has value < 0, and zero is neutral.
+
+Implement the reputation summary with WAD-precision averaging.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract ReputationSummary {
+    struct Feedback {
+        address provider;
+        int256 value;
+    }
+
+    // TODO 1: Declare a constant uint256 WAD = 1e18
+    // TODO 2: Declare a mapping from uint256 (agentId) to Feedback array
+
+    function giveFeedback(uint256 agentId, int256 value) external {
+        // TODO 3: Push a Feedback struct with msg.sender and value
+    }
+
+    function getSummary(uint256 agentId)
+        external view
+        returns (int256 averageWAD, uint256 count, uint256 positiveCount, uint256 negativeCount)
+    {
+        // TODO 4: Get the feedbacks array for this agentId
+        // TODO 5: If count is 0, return (0, 0, 0, 0)
+        // TODO 6: Loop through all feedbacks:
+        //         - Accumulate sum (int256) of all values
+        //         - Count positive (value > 0) entries
+        //         - Count negative (value < 0) entries
+        // TODO 7: Compute averageWAD = (sum * int256(WAD)) / int256(count)
+        // TODO 8: Return (averageWAD, count, positiveCount, negativeCount)
+        return (0, 0, 0, 0);
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract ReputationSummaryTest is Test {
+    ReputationSummary rep;
+    address alice = address(1);
+    address bob = address(2);
+    address charlie = address(3);
+
+    uint256 constant WAD = 1e18;
+
+    function setUp() public {
+        rep = new ReputationSummary();
+    }
+
+    function test_EmptySummary() public view {
+        (int256 avg, uint256 count, uint256 pos, uint256 neg) = rep.getSummary(1);
+        assertEq(avg, 0);
+        assertEq(count, 0);
+        assertEq(pos, 0);
+        assertEq(neg, 0);
+    }
+
+    function test_ThreeFeedbacks() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, 80);
+        vm.prank(bob);
+        rep.giveFeedback(1, -20);
+        vm.prank(charlie);
+        rep.giveFeedback(1, 60);
+
+        (int256 avg, uint256 count, uint256 pos, uint256 neg) = rep.getSummary(1);
+        // average = (80 + (-20) + 60) / 3 = 120 / 3 = 40
+        assertEq(avg, 40 * int256(WAD));
+        assertEq(count, 3);
+        assertEq(pos, 2);
+        assertEq(neg, 1);
+    }
+
+    function test_AllNegative() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, -10);
+        vm.prank(bob);
+        rep.giveFeedback(1, -30);
+
+        (int256 avg, uint256 count, uint256 pos, uint256 neg) = rep.getSummary(1);
+        // average = (-10 + -30) / 2 = -20
+        assertEq(avg, -20 * int256(WAD));
+        assertEq(count, 2);
+        assertEq(pos, 0);
+        assertEq(neg, 2);
+    }
+
+    function test_SingleFeedback() public {
+        vm.prank(alice);
+        rep.giveFeedback(1, 100);
+
+        (int256 avg, uint256 count, uint256 pos, uint256 neg) = rep.getSummary(1);
+        assertEq(avg, 100 * int256(WAD));
+        assertEq(count, 1);
+        assertEq(pos, 1);
+        assertEq(neg, 0);
+    }
+}
+`,
+		Hints: []string{
+			"uint256 public constant WAD = 1e18;",
+			"int256 sum = 0; for (uint256 i = 0; i < feedbacks.length; i++) { sum += feedbacks[i].value; if (feedbacks[i].value > 0) positiveCount++; ... }",
+			"averageWAD = (sum * int256(WAD)) / int256(count); — cast WAD and count to int256 for signed division",
+		},
+	}
+}
+
+func solERC8004X402Integration() Question {
+	return Question{
+		ID: "sol-erc8004-x402-integration", Title: "x402 + Reputation Combined",
+		Difficulty: "hard", Category: "M7: ERC-8004", Language: LangSolidity,
+		Description: `The ultimate vision of ERC-8004 is agents that transact autonomously and build
+reputation through those transactions. This question combines x402 payment
+settlement with the reputation system into a single atomic operation.
+
+The PayAndRate contract orchestrates two external calls:
+1. settlement.settle(from, to, value, nonce) — executes the payment
+2. reputation.giveFeedback(agentId, value, tag) — records the feedback
+
+Both calls happen in a single transaction, ensuring atomicity: if the payment
+fails, no feedback is recorded. This prevents feedback spam on failed payments.
+
+The contract emits a PaymentRated event linking the payment nonce to the agent
+and feedback value, creating an on-chain audit trail that connects payments
+to reputation scores.
+
+This pattern represents how autonomous agents will interact in production:
+pay for a service via x402, then rate the service provider, all in one tx.
+
+Implement the combined settle-and-rate contract with proper error propagation.`,
+		Template: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// TODO 1: Define interface ISettlement with function:
+//         settle(address from, address to, uint256 value, bytes32 nonce) external
+
+// TODO 2: Define interface IReputation with function:
+//         giveFeedback(uint256 agentId, int256 value, string calldata tag) external
+
+contract PayAndRate {
+    // TODO 3: Declare public state variables for settlement (ISettlement) and reputation (IReputation)
+
+    // TODO 4: Define event PaymentRated(bytes32 indexed nonce, uint256 indexed agentId, int256 feedbackValue)
+
+    constructor(address _settlement, address _reputation) {
+        // TODO 5: Store the settlement and reputation contract references
+    }
+
+    function settleAndRate(
+        address from,
+        address to,
+        uint256 value,
+        bytes32 nonce,
+        uint256 agentId,
+        int256 feedbackValue,
+        string calldata tag
+    ) external {
+        // TODO 6: Call settlement.settle(from, to, value, nonce)
+        //         If this reverts, the whole transaction reverts (no feedback recorded)
+        // TODO 7: Call reputation.giveFeedback(agentId, feedbackValue, tag)
+        // TODO 8: Emit the PaymentRated event
+    }
+}
+`,
+		TestCode: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/Solution.sol";
+
+contract MockSettlement {
+    bool public shouldFail;
+    bool public settleCalled;
+    address public lastFrom;
+    address public lastTo;
+    uint256 public lastValue;
+    bytes32 public lastNonce;
+
+    function setFail(bool _fail) external {
+        shouldFail = _fail;
+    }
+
+    function settle(address from, address to, uint256 value, bytes32 nonce) external {
+        require(!shouldFail, "settlement failed");
+        settleCalled = true;
+        lastFrom = from;
+        lastTo = to;
+        lastValue = value;
+        lastNonce = nonce;
+    }
+}
+
+contract MockReputation {
+    bool public feedbackCalled;
+    uint256 public lastAgentId;
+    int256 public lastValue;
+    string public lastTag;
+
+    function giveFeedback(uint256 agentId, int256 value, string calldata tag) external {
+        feedbackCalled = true;
+        lastAgentId = agentId;
+        lastValue = value;
+        lastTag = tag;
+    }
+}
+
+contract PayAndRateTest is Test {
+    MockSettlement settlement;
+    MockReputation reputation;
+    PayAndRate payAndRate;
+    address alice = address(1);
+    address bob = address(2);
+
+    function setUp() public {
+        settlement = new MockSettlement();
+        reputation = new MockReputation();
+        payAndRate = new PayAndRate(address(settlement), address(reputation));
+    }
+
+    function test_SettleAndRate() public {
+        bytes32 nonce = keccak256("nonce1");
+        payAndRate.settleAndRate(alice, bob, 1000, nonce, 1, 80, "good-service");
+
+        assertTrue(settlement.settleCalled());
+        assertEq(settlement.lastFrom(), alice);
+        assertEq(settlement.lastTo(), bob);
+        assertEq(settlement.lastValue(), 1000);
+        assertEq(settlement.lastNonce(), nonce);
+
+        assertTrue(reputation.feedbackCalled());
+        assertEq(reputation.lastAgentId(), 1);
+        assertEq(reputation.lastValue(), 80);
+        assertEq(reputation.lastTag(), "good-service");
+    }
+
+    function test_SettlementFailRevertsAll() public {
+        settlement.setFail(true);
+        bytes32 nonce = keccak256("nonce2");
+
+        vm.expectRevert();
+        payAndRate.settleAndRate(alice, bob, 1000, nonce, 1, 80, "good");
+
+        assertFalse(reputation.feedbackCalled());
+    }
+
+    function test_EmitsPaymentRatedEvent() public {
+        bytes32 nonce = keccak256("nonce3");
+
+        vm.expectEmit(true, true, false, true);
+        emit PayAndRate.PaymentRated(nonce, 1, 80);
+        payAndRate.settleAndRate(alice, bob, 1000, nonce, 1, 80, "great");
+    }
+
+    function test_NegativeFeedback() public {
+        bytes32 nonce = keccak256("nonce4");
+        payAndRate.settleAndRate(alice, bob, 500, nonce, 2, -30, "bad-service");
+
+        assertEq(reputation.lastValue(), -30);
+        assertEq(reputation.lastAgentId(), 2);
+    }
+}
+`,
+		Hints: []string{
+			"interface ISettlement { function settle(address from, address to, uint256 value, bytes32 nonce) external; }",
+			"ISettlement public settlement; IReputation public reputation; constructor: settlement = ISettlement(_settlement); reputation = IReputation(_reputation);",
+			"settleAndRate: settlement.settle(from, to, value, nonce); reputation.giveFeedback(agentId, feedbackValue, tag); emit PaymentRated(nonce, agentId, feedbackValue);",
 		},
 	}
 }

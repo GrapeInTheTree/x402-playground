@@ -7,6 +7,7 @@ func AllQuestions() []Question {
 	all = append(all, level2Standards()...)
 	all = append(all, level3Protocol()...)
 	all = append(all, level4Advanced()...)
+	all = append(all, level5Agents()...)
 	all = append(all, SolidityQuestions()...)
 	return all
 }
@@ -998,6 +999,425 @@ func TestPaymentFlow_NotComplete(t *testing.T) {
 				"Define valid transitions as a map[FlowState]FlowState",
 				`valid := map[FlowState]FlowState{StateIdle: StateRequesting, StateRequesting: StateGot402, ...}`,
 				"Allow StateError from any state: if next == StateError { f.State = next; return nil }",
+			},
+		},
+	}
+}
+
+// ============================================================
+// LEVEL 5: Agents — ERC-8004 on-chain agent registry
+// ============================================================
+
+func level5Agents() []Question {
+	return []Question{
+		{
+			ID: "agent-registration", Title: "Agent Registration File Parser",
+			Difficulty: "easy", Category: "ERC-8004",
+			Description: `ERC-8004 defines an on-chain registry for autonomous agents. Each agent
+publishes a JSON registration file describing its capabilities, endpoints,
+and payment configuration.
+
+Parse the registration JSON, check whether the agent has x402 payment
+support enabled, and extract all service endpoints.`,
+			Template: `package x402quiz
+
+import "encoding/json"
+
+// X402Config holds the x402 payment configuration for an agent.
+type X402Config struct {
+	Enabled bool   ` + "`json:\"enabled\"`" + `
+	Network string ` + "`json:\"network\"`" + `
+	Asset   string ` + "`json:\"asset\"`" + `
+}
+
+// AgentService describes a single service endpoint.
+type AgentService struct {
+	Name     string ` + "`json:\"name\"`" + `
+	Endpoint string ` + "`json:\"endpoint\"`" + `
+	Price    string ` + "`json:\"price\"`" + `
+}
+
+// AgentRegistration is the top-level agent registration structure.
+type AgentRegistration struct {
+	AgentID     uint64         ` + "`json:\"agentId\"`" + `
+	Name        string         ` + "`json:\"name\"`" + `
+	Description string         ` + "`json:\"description\"`" + `
+	Services    []AgentService ` + "`json:\"services\"`" + `
+	X402        X402Config     ` + "`json:\"x402\"`" + `
+}
+
+// ParseRegistration parses a JSON registration file into an AgentRegistration.
+func ParseRegistration(data []byte) (*AgentRegistration, error) {
+	// TODO: json.Unmarshal data into AgentRegistration
+	_ = json.Unmarshal
+	return nil, nil
+}
+
+// HasX402Support returns true if the agent has x402 payments enabled.
+func HasX402Support(reg *AgentRegistration) bool {
+	// TODO: Check reg.X402.Enabled
+	return false
+}
+
+// ServiceEndpoints collects all endpoint URLs from the agent's services.
+func ServiceEndpoints(reg *AgentRegistration) []string {
+	// TODO: Iterate reg.Services and collect Endpoint fields
+	return nil
+}
+`,
+			TestCode: `package x402quiz
+
+import "testing"
+
+func TestParseRegistration_Valid(t *testing.T) {
+	data := []byte(` + "`" + `{
+		"agentId": 1,
+		"name": "WeatherBot",
+		"description": "Provides weather data",
+		"services": [
+			{"name": "weather", "endpoint": "https://agent.example.com/weather", "price": "0.10"},
+			{"name": "forecast", "endpoint": "https://agent.example.com/forecast", "price": "0.25"}
+		],
+		"x402": {"enabled": true, "network": "eip155:84532", "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"}
+	}` + "`" + `)
+	reg, err := ParseRegistration(data)
+	if err != nil { t.Fatal(err) }
+	if reg.AgentID != 1 { t.Errorf("AgentID = %d, want 1", reg.AgentID) }
+	if reg.Name != "WeatherBot" { t.Errorf("Name = %q", reg.Name) }
+	if len(reg.Services) != 2 { t.Errorf("Services count = %d, want 2", len(reg.Services)) }
+	if reg.X402.Network != "eip155:84532" { t.Errorf("Network = %q", reg.X402.Network) }
+}
+
+func TestHasX402Support(t *testing.T) {
+	enabled := &AgentRegistration{X402: X402Config{Enabled: true}}
+	if !HasX402Support(enabled) { t.Error("expected x402 support enabled") }
+
+	disabled := &AgentRegistration{X402: X402Config{Enabled: false}}
+	if HasX402Support(disabled) { t.Error("expected x402 support disabled") }
+}
+
+func TestServiceEndpoints(t *testing.T) {
+	reg := &AgentRegistration{
+		Services: []AgentService{
+			{Endpoint: "https://a.example.com/one"},
+			{Endpoint: "https://a.example.com/two"},
+			{Endpoint: "https://a.example.com/three"},
+		},
+	}
+	eps := ServiceEndpoints(reg)
+	if len(eps) != 3 { t.Fatalf("expected 3 endpoints, got %d", len(eps)) }
+	if eps[0] != "https://a.example.com/one" { t.Errorf("eps[0] = %q", eps[0]) }
+	if eps[2] != "https://a.example.com/three" { t.Errorf("eps[2] = %q", eps[2]) }
+}
+
+func TestParseRegistration_Invalid(t *testing.T) {
+	_, err := ParseRegistration([]byte("not json"))
+	if err == nil { t.Error("expected error for invalid JSON") }
+}
+`,
+			Hints: []string{
+				"var reg AgentRegistration; err := json.Unmarshal(data, &reg)",
+				"HasX402Support simply returns reg.X402.Enabled",
+				"for _, s := range reg.Services { eps = append(eps, s.Endpoint) }",
+			},
+		},
+		{
+			ID: "agent-global-id", Title: "Global Agent ID Format",
+			Difficulty: "easy", Category: "ERC-8004",
+			Description: `ERC-8004 agents are identified by a global ID that encodes chain,
+contract, and token information in a single string:
+  eip155:{chainId}:{contractAddress}:{tokenId}
+
+Parse this format into its components, format it back, and validate
+that the prefix is "eip155", the contract starts with "0x" and is
+42 characters long.`,
+			Template: `package x402quiz
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// GlobalAgentID holds the parsed components of a global agent identifier.
+type GlobalAgentID struct {
+	ChainID  uint64
+	Contract string
+	TokenID  uint64
+}
+
+// ParseGlobalAgentID parses "eip155:{chainId}:{contract}:{tokenId}".
+// Returns an error if the format is invalid.
+func ParseGlobalAgentID(id string) (*GlobalAgentID, error) {
+	// TODO: Split by ":", validate 4 parts, first part must be "eip155"
+	// TODO: Parse chainId and tokenId as uint64
+	_ = strings.Split
+	_ = strconv.ParseUint
+	_ = fmt.Errorf
+	return nil, nil
+}
+
+// FormatGlobalAgentID formats the ID back to "eip155:{chainId}:{contract}:{tokenId}".
+func FormatGlobalAgentID(gid *GlobalAgentID) string {
+	// TODO: Format the global ID string
+	_ = fmt.Sprintf
+	return ""
+}
+
+// ValidateGlobalAgentID checks that the ID components are well-formed:
+// - Contract starts with "0x" and is 42 characters
+func ValidateGlobalAgentID(gid *GlobalAgentID) error {
+	// TODO: Validate contract address format
+	_ = strings.HasPrefix
+	return nil
+}
+`,
+			TestCode: `package x402quiz
+
+import "testing"
+
+func TestParseGlobalAgentID_Valid(t *testing.T) {
+	gid, err := ParseGlobalAgentID("eip155:84532:0x036CbD53842c5426634e7929541eC2318f3dCF7e:42")
+	if err != nil { t.Fatal(err) }
+	if gid.ChainID != 84532 { t.Errorf("ChainID = %d, want 84532", gid.ChainID) }
+	if gid.Contract != "0x036CbD53842c5426634e7929541eC2318f3dCF7e" { t.Errorf("Contract = %q", gid.Contract) }
+	if gid.TokenID != 42 { t.Errorf("TokenID = %d, want 42", gid.TokenID) }
+}
+
+func TestGlobalAgentID_Roundtrip(t *testing.T) {
+	original := "eip155:84532:0x036CbD53842c5426634e7929541eC2318f3dCF7e:42"
+	gid, err := ParseGlobalAgentID(original)
+	if err != nil { t.Fatal(err) }
+	formatted := FormatGlobalAgentID(gid)
+	if formatted != original { t.Errorf("roundtrip failed: got %q, want %q", formatted, original) }
+}
+
+func TestParseGlobalAgentID_InvalidFormat(t *testing.T) {
+	_, err := ParseGlobalAgentID("eip155:84532:0xABC")
+	if err == nil { t.Error("expected error for wrong number of parts") }
+}
+
+func TestParseGlobalAgentID_InvalidChainID(t *testing.T) {
+	_, err := ParseGlobalAgentID("eip155:notanumber:0x036CbD53842c5426634e7929541eC2318f3dCF7e:42")
+	if err == nil { t.Error("expected error for invalid chain ID") }
+}
+
+func TestValidateGlobalAgentID(t *testing.T) {
+	valid := &GlobalAgentID{ChainID: 84532, Contract: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", TokenID: 1}
+	if err := ValidateGlobalAgentID(valid); err != nil { t.Errorf("unexpected error: %v", err) }
+
+	bad := &GlobalAgentID{ChainID: 84532, Contract: "notanaddress", TokenID: 1}
+	if err := ValidateGlobalAgentID(bad); err == nil { t.Error("expected error for invalid contract") }
+}
+`,
+			Hints: []string{
+				`parts := strings.Split(id, ":"); if len(parts) != 4 { return error }`,
+				`fmt.Sprintf("eip155:%d:%s:%d", gid.ChainID, gid.Contract, gid.TokenID)`,
+				`if !strings.HasPrefix(gid.Contract, "0x") || len(gid.Contract) != 42 { return error }`,
+			},
+		},
+		{
+			ID: "agent-wad-encoding", Title: "Feedback Value Encoding with WAD Math",
+			Difficulty: "medium", Category: "ERC-8004",
+			Description: `ERC-8004 feedback values are stored on-chain using WAD encoding:
+fixed-point math with 18 decimal places (1 WAD = 1e18). This is the
+standard precision format in DeFi for avoiding floating-point errors.
+
+Implement WAD conversion functions using math/big for arbitrary
+precision: convert to/from WAD scale, compute averages, and
+normalize between different decimal representations (e.g., USDC's
+6 decimals to WAD's 18 decimals).`,
+			Template: `package x402quiz
+
+import "math/big"
+
+// WAD is 1e18 — the standard fixed-point scale.
+var WAD = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+
+// ToWAD converts an integer value to WAD scale (value * 1e18).
+func ToWAD(value int64) *big.Int {
+	// TODO: Multiply value by WAD
+	_ = new(big.Int).Mul
+	return nil
+}
+
+// FromWAD converts a WAD-scaled value back to a plain integer (wad / 1e18).
+func FromWAD(wad *big.Int) int64 {
+	// TODO: Divide wad by WAD and return as int64
+	_ = new(big.Int).Div
+	return 0
+}
+
+// WADAverage computes the average of WAD-scaled values: sum / count.
+// Returns zero if the slice is empty.
+func WADAverage(values []*big.Int) *big.Int {
+	// TODO: Sum all values, divide by count
+	return nil
+}
+
+// NormalizeDecimals converts a value from one decimal scale to another.
+// Example: 1000000 (6 decimals) → 1000000000000000000 (18 decimals)
+func NormalizeDecimals(value int64, fromDecimals, toDecimals int) *big.Int {
+	// TODO: Scale value by 10^(toDecimals - fromDecimals)
+	// If toDecimals > fromDecimals, multiply; otherwise divide
+	return nil
+}
+`,
+			TestCode: `package x402quiz
+
+import (
+	"math/big"
+	"testing"
+)
+
+func TestToWAD(t *testing.T) {
+	got := ToWAD(100)
+	want := new(big.Int).Mul(big.NewInt(100), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+	if got.Cmp(want) != 0 { t.Errorf("ToWAD(100) = %s, want %s", got, want) }
+}
+
+func TestFromWAD_Roundtrip(t *testing.T) {
+	wad := ToWAD(42)
+	got := FromWAD(wad)
+	if got != 42 { t.Errorf("FromWAD(ToWAD(42)) = %d, want 42", got) }
+}
+
+func TestWADAverage(t *testing.T) {
+	wad18 := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	v1 := new(big.Int).Mul(big.NewInt(80), wad18)
+	v2 := new(big.Int).Mul(big.NewInt(-20), wad18)
+	v3 := new(big.Int).Mul(big.NewInt(60), wad18)
+	avg := WADAverage([]*big.Int{v1, v2, v3})
+	want := new(big.Int).Mul(big.NewInt(40), wad18)
+	if avg.Cmp(want) != 0 { t.Errorf("WADAverage = %s, want %s", avg, want) }
+}
+
+func TestWADAverage_Empty(t *testing.T) {
+	avg := WADAverage(nil)
+	if avg.Sign() != 0 { t.Errorf("expected zero for empty, got %s", avg) }
+}
+
+func TestNormalizeDecimals_6to18(t *testing.T) {
+	got := NormalizeDecimals(1_000_000, 6, 18)
+	want := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	if got.Cmp(want) != 0 { t.Errorf("NormalizeDecimals(1e6, 6, 18) = %s, want %s", got, want) }
+}
+
+func TestNormalizeDecimals_18to6(t *testing.T) {
+	got := NormalizeDecimals(1_000_000_000_000_000_000, 18, 6)
+	want := big.NewInt(1_000_000)
+	if got.Cmp(want) != 0 { t.Errorf("NormalizeDecimals(1e18, 18, 6) = %s, want %s", got, want) }
+}
+`,
+			Hints: []string{
+				"ToWAD: return new(big.Int).Mul(big.NewInt(value), WAD)",
+				"WADAverage: sum with Add in a loop, then Div by big.NewInt(int64(len(values)))",
+				"NormalizeDecimals: compute 10^|toDecimals-fromDecimals| then multiply or divide accordingly",
+			},
+		},
+		{
+			ID: "agent-x402-integration", Title: "x402 + ERC-8004 Integration",
+			Difficulty: "medium", Category: "ERC-8004",
+			Description: `When an agent performs a service paid via x402, the settlement receipt
+can be linked to on-chain feedback. This creates a verifiable connection:
+proof-of-payment tied to an agent rating.
+
+Build an AgentFeedback struct that embeds a ProofOfPayment from an x402
+settlement. Validate that the proof contains a well-formed transaction
+hash and positive payment amount. The feedback tag must be "x402-payment"
+to identify payment-linked reviews.`,
+			Template: `package x402quiz
+
+import (
+	"fmt"
+	"strings"
+)
+
+// ProofOfPayment links feedback to an on-chain x402 settlement.
+type ProofOfPayment struct {
+	TxHash  string
+	Network string
+	Amount  uint64
+	Payer   string
+}
+
+// AgentFeedback represents a payment-linked agent review.
+type AgentFeedback struct {
+	AgentID  uint64
+	Provider string
+	Value    int64 // rating score (can be negative)
+	Tag      string
+	Proof    *ProofOfPayment
+}
+
+// BuildFeedbackFromSettlement creates an AgentFeedback from x402 settlement data.
+// Validates: txHash starts with "0x" and len >= 66, amount > 0.
+// Sets Tag to "x402-payment" and Provider to the payer address.
+func BuildFeedbackFromSettlement(txHash, network string, amount uint64, payer string, agentID uint64, rating int64) (*AgentFeedback, error) {
+	// TODO: Validate txHash format (starts with "0x", length >= 66)
+	// TODO: Validate amount > 0
+	// TODO: Build AgentFeedback with embedded ProofOfPayment
+	_ = fmt.Errorf
+	_ = strings.HasPrefix
+	return nil, nil
+}
+
+// ValidateProofOfPayment checks that all fields are non-empty and txHash is well-formed.
+func ValidateProofOfPayment(p *ProofOfPayment) error {
+	// TODO: Check TxHash, Network, Payer are non-empty
+	// TODO: Check TxHash starts with "0x" and len >= 66
+	_ = fmt.Errorf
+	return nil
+}
+`,
+			TestCode: `package x402quiz
+
+import "testing"
+
+func TestBuildFeedbackFromSettlement_Valid(t *testing.T) {
+	fb, err := BuildFeedbackFromSettlement(
+		"0x99e49093d0bb2805b2e1097a6c71336c73f5871a4e51ec2dacc733f51faedc24",
+		"eip155:84532", 100000, "0xClientAddr", 1, 85,
+	)
+	if err != nil { t.Fatal(err) }
+	if fb.AgentID != 1 { t.Errorf("AgentID = %d", fb.AgentID) }
+	if fb.Tag != "x402-payment" { t.Errorf("Tag = %q, want \"x402-payment\"", fb.Tag) }
+	if fb.Proof == nil { t.Fatal("Proof is nil") }
+	if fb.Proof.Amount != 100000 { t.Errorf("Proof.Amount = %d", fb.Proof.Amount) }
+	if fb.Value != 85 { t.Errorf("Value = %d, want 85", fb.Value) }
+	if fb.Provider != "0xClientAddr" { t.Errorf("Provider = %q", fb.Provider) }
+}
+
+func TestBuildFeedbackFromSettlement_BadTxHash(t *testing.T) {
+	_, err := BuildFeedbackFromSettlement("short", "eip155:84532", 100000, "0xPayer", 1, 50)
+	if err == nil { t.Error("expected error for invalid txHash") }
+}
+
+func TestBuildFeedbackFromSettlement_ZeroAmount(t *testing.T) {
+	_, err := BuildFeedbackFromSettlement(
+		"0x99e49093d0bb2805b2e1097a6c71336c73f5871a4e51ec2dacc733f51faedc24",
+		"eip155:84532", 0, "0xPayer", 1, 50,
+	)
+	if err == nil { t.Error("expected error for zero amount") }
+}
+
+func TestValidateProofOfPayment_Valid(t *testing.T) {
+	p := &ProofOfPayment{
+		TxHash:  "0x99e49093d0bb2805b2e1097a6c71336c73f5871a4e51ec2dacc733f51faedc24",
+		Network: "eip155:84532", Amount: 100000, Payer: "0xAddr",
+	}
+	if err := ValidateProofOfPayment(p); err != nil { t.Errorf("unexpected error: %v", err) }
+}
+
+func TestValidateProofOfPayment_MissingTxHash(t *testing.T) {
+	p := &ProofOfPayment{TxHash: "", Network: "eip155:84532", Amount: 100000, Payer: "0xAddr"}
+	if err := ValidateProofOfPayment(p); err == nil { t.Error("expected error for empty txHash") }
+}
+`,
+			Hints: []string{
+				`if !strings.HasPrefix(txHash, "0x") || len(txHash) < 66 { return nil, fmt.Errorf("invalid txHash") }`,
+				`Tag must be set to "x402-payment" and Provider to payer`,
+				`ValidateProofOfPayment: check p.TxHash != "" && p.Network != "" && p.Payer != "" then check txHash format`,
 			},
 		},
 	}

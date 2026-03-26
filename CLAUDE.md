@@ -101,11 +101,11 @@ The TUI uses [bubbletea](https://github.com/charmbracelet/bubbletea) (Elm archit
 
 Key TUI packages:
 - `internal/tui/components/` — Reusable: Menu (with highlight bar), Panel, TriPanel, FieldExplorer, JSONView, Progress, StatusBar
-- `internal/tui/learn/` — Interactive coding quiz with split-panel layout (left: scrollable question list, right: description preview). 36 problems (13 Go + 23 Solidity) across 10 groups (4 Go levels + 6 Solidity modules). Pass/fail animation (2s pulsing) after test submission. Viewport scrolling with group header awareness. Uses `tea.ExecProcess` to launch `$EDITOR` (nvim→vim→nano fallback), then auto-grades via `go test` or `forge test`. Shared `*quiz.QuizProgress` synced to Dashboard.
+- `internal/tui/learn/` — Interactive coding quiz with split-panel layout (left: scrollable question list, right: description preview). 48 problems (17 Go + 31 Solidity) across 12 groups (5 Go levels + 7 Solidity modules). Pass/fail animation (2s pulsing) after test submission. Viewport scrolling with group header awareness. Uses `tea.ExecProcess` to launch `$EDITOR` (nvim→vim→nano fallback), then auto-grades via `go test` or `forge test`. Shared `*quiz.QuizProgress` synced to Dashboard.
 - `internal/quiz/` — Quiz engine:
   - `types.go` — `Question` (with Lang, Category, Difficulty), `Result`, `Score`, `ModuleProgress`, `QuizProgress`
   - `runner.go` — `Runner` supports Go (`go test` in temp module) and Solidity (`forge test` in temp Foundry project with forge-std)
-  - `questions.go` — 13 Go questions: hex validation, USDC conversion, base64/JSON, ERC-20 selectors, EIP-712 domains/type hashes, EIP-3009 fields, EIP-2612 permits, x402 headers/verify/settlement, Permit2 flow, payment state machine
+  - `questions.go` — 17 Go questions across 5 levels: hex validation, USDC conversion, base64/JSON, ERC-20 selectors, EIP-712 domains/type hashes, EIP-3009 fields, EIP-2612 permits, x402 headers/verify/settlement, Permit2 flow, payment state machine, ERC-8004 agent registration/global ID/WAD encoding/x402 integration
   - `questions_solidity.go` — 23 Solidity questions across 6 modules:
     - M1 Foundations (4): types/vars, functions/visibility, control flow/events, msg/block globals
     - M2 ERC-20 (4): basic token, approval system, events, metadata
@@ -113,6 +113,7 @@ Key TUI packages:
     - M4 Gasless (3): EIP-2612 permit, EIP-3009 transferWithAuth, nonce management
     - M5 Advanced (5): CREATE2, Permit2 SignatureTransfer, minimal proxy, access control, reentrancy guard
     - M6 x402 (3): settlement contract, Permit2 proxy, full verify+settle
+    - M7 ERC-8004 (8): agent identity registry, metadata storage, reputation feedback, self-feedback prevention, validation request/response, EIP-712 wallet verification, WAD reputation summary, x402+reputation combined
 - `internal/tui/explore/` — PAYMENT-REQUIRED field explorer, EIP-712 TypedData inspector (Tab to switch EIP-3009/Permit2), EIP-3009 vs Permit2 comparison, on-chain state viewer
 - `internal/tui/practice/` — **Live execution** of 10-step flow via `LiveExecutor`. Each step fires async `tea.Cmd` with real HTTP/SDK calls. 3-column panel (Client/Resource/Facilitator) with spinner animation during execution. `stepManager` tracks state (pending/running/done/error). Press `n` to execute, `p` to review previous.
 - `internal/tui/dashboard/` — Side-by-side layout: left panel shows live wallet balances from chain via RPC (spinner, `r` to refresh), right panel shows quiz progress with uniform `━`/`─` bars per module and overall percentage. Shared `*quiz.QuizProgress` pointer updated by Learn page.
@@ -230,4 +231,5 @@ Both use CREATE2 deterministic deployment. Address is chain-agnostic but actual 
 
 - [x402 Protocol](https://x402.org/) | [GitHub](https://github.com/coinbase/x402)
 - [EIP-3009](https://eips.ethereum.org/EIPS/eip-3009)
+- [ERC-8004: Trustless Agents](https://eips.ethereum.org/EIPS/eip-8004)
 - [Coinbase x402 Go SDK](https://pkg.go.dev/github.com/coinbase/x402/go)

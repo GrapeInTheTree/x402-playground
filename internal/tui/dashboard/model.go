@@ -194,6 +194,8 @@ func shortModuleName(name string) string {
 		return "Go Protocol"
 	case strings.Contains(name, "LEVEL 4"):
 		return "Go Advanced"
+	case strings.Contains(name, "LEVEL 5"):
+		return "Go Agents"
 	case strings.Contains(name, "M1:"):
 		return "Sol Foundations"
 	case strings.Contains(name, "M2:"):
@@ -206,6 +208,8 @@ func shortModuleName(name string) string {
 		return "Sol Advanced"
 	case strings.Contains(name, "M6:"):
 		return "Sol x402"
+	case strings.Contains(name, "M7:"):
+		return "Sol ERC-8004"
 	default:
 		return name
 	}

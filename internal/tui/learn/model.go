@@ -323,19 +323,22 @@ func buildLevelGroups(questions []quiz.Question) []levelGroup {
 	}
 
 	// Match functions are mutually exclusive to prevent cross-group leaking.
-	// Go questions: exclude x402 category from difficulty-based groups.
+	// Go questions: exclude x402 and ERC-8004 categories from difficulty-based groups.
 	defs := []groupDef{
 		{"GO — LEVEL 1: Basics", func(q quiz.Question) bool {
-			return q.Language != quiz.LangSolidity && q.Difficulty == "easy" && q.Category != "x402"
+			return q.Language != quiz.LangSolidity && q.Difficulty == "easy" && q.Category != "x402" && q.Category != "ERC-8004"
 		}},
 		{"GO — LEVEL 2: Standards", func(q quiz.Question) bool {
-			return q.Language != quiz.LangSolidity && q.Difficulty == "medium" && q.Category != "x402"
+			return q.Language != quiz.LangSolidity && q.Difficulty == "medium" && q.Category != "x402" && q.Category != "ERC-8004"
 		}},
 		{"GO — LEVEL 3: Protocol", func(q quiz.Question) bool {
 			return q.Language != quiz.LangSolidity && q.Category == "x402" && q.Difficulty != "hard"
 		}},
 		{"GO — LEVEL 4: Advanced", func(q quiz.Question) bool {
-			return q.Language != quiz.LangSolidity && q.Difficulty == "hard"
+			return q.Language != quiz.LangSolidity && q.Difficulty == "hard" && q.Category != "ERC-8004"
+		}},
+		{"GO — LEVEL 5: Agents", func(q quiz.Question) bool {
+			return q.Language != quiz.LangSolidity && q.Category == "ERC-8004"
 		}},
 		{"SOLIDITY — M1: Foundations", func(q quiz.Question) bool {
 			return q.Language == quiz.LangSolidity && strings.HasPrefix(q.Category, "M1:")
@@ -354,6 +357,9 @@ func buildLevelGroups(questions []quiz.Question) []levelGroup {
 		}},
 		{"SOLIDITY — M6: x402", func(q quiz.Question) bool {
 			return q.Language == quiz.LangSolidity && strings.HasPrefix(q.Category, "M6:")
+		}},
+		{"SOLIDITY — M7: ERC-8004", func(q quiz.Question) bool {
+			return q.Language == quiz.LangSolidity && strings.HasPrefix(q.Category, "M7:")
 		}},
 	}
 

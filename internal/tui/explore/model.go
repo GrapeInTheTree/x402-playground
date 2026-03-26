@@ -16,6 +16,7 @@ const (
 	subPageTypedData
 	subPageCompare
 	subPageOnChain
+	subPageERC8004
 )
 
 // Model is the explore page TUI model with sub-page navigation.
@@ -26,6 +27,7 @@ type Model struct {
 	typed    *TypedDataModel
 	compare  *CompareModel
 	onchain  *OnChainModel
+	erc8004  *ERC8004Model
 	width    int
 	height   int
 }
@@ -35,6 +37,7 @@ var menuItems = []components.MenuItem{
 	{Title: "Inspect EIP-712 TypedData", Description: "Explore EIP-712 signature data structures", Icon: "🔬"},
 	{Title: "Compare EIP-3009 vs Permit2", Description: "Side-by-side comparison of both methods", Icon: "⚖️"},
 	{Title: "View On-Chain State", Description: "Balances, allowances, contract state", Icon: "🔗"},
+	{Title: "ERC-8004 Agent Registries", Description: "Identity, Reputation, Validation for AI agents", Icon: "🤖"},
 }
 
 // New creates a new explore page model with all sub-pages initialized.
@@ -46,6 +49,7 @@ func New(width, height int) *Model {
 		typed:   NewTypedDataModel(width, height),
 		compare: NewCompareModel(width, height),
 		onchain: NewOnChainModel(width, height),
+		erc8004: NewERC8004Model(width, height),
 		width:   width,
 		height:  height,
 	}
@@ -78,6 +82,8 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 					m.sub = subPageCompare
 				case 3:
 					m.sub = subPageOnChain
+				case 4:
+					m.sub = subPageERC8004
 				}
 				return m, nil
 			}
@@ -102,6 +108,8 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 		cmd = m.compare.Update(msg)
 	case subPageOnChain:
 		cmd = m.onchain.Update(msg)
+	case subPageERC8004:
+		cmd = m.erc8004.Update(msg)
 	}
 
 	return m, cmd
@@ -115,6 +123,7 @@ func (m *Model) SetSize(width, height int) {
 	m.typed.SetSize(width, height)
 	m.compare.SetSize(width, height)
 	m.onchain.SetSize(width, height)
+	m.erc8004.SetSize(width, height)
 }
 
 // View renders the current sub-page or the explore menu.
@@ -132,6 +141,8 @@ func (m *Model) View() string {
 		return m.compare.View()
 	case subPageOnChain:
 		return m.onchain.View()
+	case subPageERC8004:
+		return m.erc8004.View()
 	default:
 		return ""
 	}
