@@ -123,8 +123,11 @@ func (s *Server) HandleSupported(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// parseRequest reads and decodes the JSON request body.
+const maxRequestBodySize = 1 << 20 // 1 MB
+
+// parseRequest reads and decodes the JSON request body with a size limit.
 func (s *Server) parseRequest(c *gin.Context) (*verifySettleRequest, error) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxRequestBodySize)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		return nil, ErrReadBody

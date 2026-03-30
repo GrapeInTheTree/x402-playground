@@ -1,17 +1,25 @@
 package config
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 func init() {
-	_ = godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		// Only warn on actual parse errors; missing .env file is fine
+		if !os.IsNotExist(err) {
+			slog.Warn("failed to parse .env file", "error", err)
+		}
+	}
 }
 
 // FacilitatorConfig holds configuration for the facilitator server.
@@ -62,6 +70,18 @@ func LoadFacilitator() (*FacilitatorConfig, error) {
 	if cfg.PrivateKey == "" {
 		errs = append(errs, fmt.Errorf("FACILITATOR_PRIVATE_KEY is required"))
 	}
+	if err := validateNetwork(cfg.Network); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validatePort(cfg.Port); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateTransferMethod(cfg.AssetTransferMethod); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateURL(cfg.RPCURL, "RPC_URL"); err != nil {
+		errs = append(errs, err)
+	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
@@ -83,9 +103,25 @@ func LoadResource() (*ResourceConfig, error) {
 	var errs []error
 	if cfg.FacilitatorURL == "" {
 		errs = append(errs, fmt.Errorf("FACILITATOR_URL is required"))
+	} else if err := validateURL(cfg.FacilitatorURL, "FACILITATOR_URL"); err != nil {
+		errs = append(errs, err)
 	}
 	if cfg.PayToAddress == "" {
 		errs = append(errs, fmt.Errorf("PAY_TO_ADDRESS is required"))
+	} else if err := validateEthAddress(cfg.PayToAddress, "PAY_TO_ADDRESS"); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateNetwork(cfg.Network); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validatePort(cfg.Port); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateTransferMethod(cfg.AssetTransferMethod); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateEthAddress(cfg.USDCAddress, "USDC_ADDRESS"); err != nil {
+		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -112,6 +148,17 @@ func LoadClient() (*ClientConfig, error) {
 	}
 	if cfg.ResourceURL == "" {
 		errs = append(errs, fmt.Errorf("RESOURCE_URL is required"))
+	} else if err := validateURL(cfg.ResourceURL, "RESOURCE_URL"); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateNetwork(cfg.Network); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateTransferMethod(cfg.AssetTransferMethod); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateEthAddress(cfg.USDCAddress, "USDC_ADDRESS"); err != nil {
+		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -152,14 +199,71 @@ func LoadExplorer() (*ExplorerConfig, error) {
 	}
 	if cfg.ResourceURL == "" {
 		errs = append(errs, fmt.Errorf("RESOURCE_URL is required"))
+	} else if err := validateURL(cfg.ResourceURL, "RESOURCE_URL"); err != nil {
+		errs = append(errs, err)
 	}
 	if cfg.FacilitatorURL == "" {
 		errs = append(errs, fmt.Errorf("FACILITATOR_URL is required"))
+	} else if err := validateURL(cfg.FacilitatorURL, "FACILITATOR_URL"); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateNetwork(cfg.Network); err != nil {
+		errs = append(errs, err)
+	}
+	if err := validateTransferMethod(cfg.AssetTransferMethod); err != nil {
+		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
 	return cfg, nil
+}
+
+func validateEthAddress(addr, name string) error {
+	if !strings.HasPrefix(addr, "0x") || len(addr) != 42 {
+		return fmt.Errorf("%s must be 0x-prefixed 40-char hex address, got %q", name, addr)
+	}
+	if _, err := hex.DecodeString(addr[2:]); err != nil {
+		return fmt.Errorf("%s contains invalid hex: %w", name, err)
+	}
+	return nil
+}
+
+func validateNetwork(s string) error {
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) != 2 || parts[0] != "eip155" {
+		return fmt.Errorf("NETWORK must be in format eip155:<chainId>, got %q", s)
+	}
+	if _, err := strconv.ParseUint(parts[1], 10, 64); err != nil {
+		return fmt.Errorf("NETWORK chain ID must be numeric, got %q", parts[1])
+	}
+	return nil
+}
+
+func validateURL(s, name string) error {
+	u, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid URL: %w", name, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("%s must use http or https scheme, got %q", name, s)
+	}
+	return nil
+}
+
+func validatePort(s string) error {
+	p, err := strconv.Atoi(s)
+	if err != nil || p < 1 || p > 65535 {
+		return fmt.Errorf("port must be 1-65535, got %q", s)
+	}
+	return nil
+}
+
+func validateTransferMethod(s string) error {
+	if s != "eip3009" && s != "permit2" {
+		return fmt.Errorf("ASSET_TRANSFER_METHOD must be eip3009 or permit2, got %q", s)
+	}
+	return nil
 }
 
 func envOr(key, fallback string) string {

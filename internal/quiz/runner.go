@@ -1,6 +1,8 @@
 package quiz
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -120,13 +122,23 @@ func (r *Runner) runGo(solution, testCode string) *Result {
 		return &Result{Error: fmt.Sprintf("write test: %v", err)}
 	}
 
-	cmd := exec.Command("go", "test", "-v", "-count=1", "./...")
+	cmd := exec.Command("go", "test", "-json", "-count=1", "./...")
 	cmd.Dir = r.workDir
 	out, err := cmd.CombinedOutput()
 	output := string(out)
 
 	result := &Result{Output: output}
 
+	// Parse JSON test events for reliable pass/fail counting
+	passed, failed := parseGoTestJSON(output)
+	if passed+failed > 0 {
+		result.Compiled = true
+		result.Passed = passed
+		result.Total = passed + failed
+		return result
+	}
+
+	// Fallback: check for compilation errors
 	if err != nil {
 		if strings.Contains(output, "build failed") ||
 			strings.Contains(output, "cannot") ||
@@ -138,16 +150,6 @@ func (r *Runner) runGo(solution, testCode string) *Result {
 		result.Compiled = true
 	} else {
 		result.Compiled = true
-	}
-
-	result.Passed = strings.Count(output, "--- PASS")
-	result.Total = result.Passed + strings.Count(output, "--- FAIL")
-
-	if result.Total == 0 && result.Compiled {
-		result.Total = 1
-		if err == nil {
-			result.Passed = 1
-		}
 	}
 
 	return result
@@ -182,18 +184,44 @@ func (r *Runner) runSolidity(solution, testCode string) *Result {
 		result.Compiled = true
 	}
 
-	// Parse forge test output: [PASS] or [FAIL]
-	result.Passed = strings.Count(output, "[PASS]")
-	result.Total = result.Passed + strings.Count(output, "[FAIL]")
-
-	if result.Total == 0 && result.Compiled {
-		result.Total = 1
-		if err == nil {
-			result.Passed = 1
+	// Parse forge test output: count lines starting with [PASS] or [FAIL]
+	for _, line := range strings.Split(output, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[PASS]") {
+			result.Passed++
+			result.Total++
+		} else if strings.HasPrefix(trimmed, "[FAIL]") {
+			result.Total++
 		}
 	}
 
 	return result
+}
+
+// parseGoTestJSON parses go test -json output and returns pass/fail counts.
+func parseGoTestJSON(output string) (passed, failed int) {
+	type testEvent struct {
+		Action string `json:"Action"`
+		Test   string `json:"Test"`
+	}
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		var ev testEvent
+		if err := json.Unmarshal(scanner.Bytes(), &ev); err != nil {
+			continue
+		}
+		// Only count events with a Test name (skip package-level events)
+		if ev.Test == "" {
+			continue
+		}
+		switch ev.Action {
+		case "pass":
+			passed++
+		case "fail":
+			failed++
+		}
+	}
+	return
 }
 
 // TemplatePath returns the path where the solution file is written.

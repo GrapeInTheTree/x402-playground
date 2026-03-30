@@ -75,21 +75,29 @@ func main() {
 
 	// Graceful shutdown
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: r,
+		Addr:           ":" + cfg.Port,
+		Handler:        r,
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20,
 	}
 
+	errCh := make(chan error, 1)
 	go func() {
 		logger.Info("facilitator server starting", "port", cfg.Port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("server error", "error", err)
-			os.Exit(1)
+			errCh <- err
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	select {
+	case <-quit:
+	case err := <-errCh:
+		logger.Error("server failed to start", "error", err)
+	}
 
 	logger.Info("shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

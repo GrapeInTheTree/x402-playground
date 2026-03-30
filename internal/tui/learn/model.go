@@ -145,8 +145,20 @@ func (m *Model) syncProgress() {
 		}
 		modules[i] = mp
 	}
-	m.progress.Modules = modules
-	m.progress.Score = m.score
+	m.progress.SetModules(modules)
+	m.progress.SetScore(m.score)
+}
+
+// Cleanup releases resources held by quiz runners (temp directories).
+func (m *Model) Cleanup() {
+	if m.goRunner != nil {
+		m.goRunner.Cleanup()
+		m.goRunner = nil
+	}
+	if m.solRunner != nil {
+		m.solRunner.Cleanup()
+		m.solRunner = nil
+	}
 }
 
 func (m *Model) updateList(msg tea.KeyMsg) (tui.SubModel, tea.Cmd) {
@@ -206,8 +218,14 @@ func (m *Model) getRunner(lang quiz.Lang) *quiz.Runner {
 func (m *Model) setRunner(lang quiz.Lang, r *quiz.Runner) {
 	switch lang {
 	case quiz.LangSolidity:
+		if m.solRunner != nil {
+			m.solRunner.Cleanup()
+		}
 		m.solRunner = r
 	default:
+		if m.goRunner != nil {
+			m.goRunner.Cleanup()
+		}
 		m.goRunner = r
 	}
 }

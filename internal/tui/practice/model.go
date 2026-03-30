@@ -22,8 +22,8 @@ const (
 type Model struct {
 	menu        components.Menu
 	sub         subPage
-	eip3009flow *EIP3009FlowModel
-	permit2flow *Permit2FlowModel
+	eip3009flow *PaymentFlowModel
+	permit2flow *PaymentFlowModel
 	sidebyside  *SideBySideModel
 	cfg         *config.ExplorerConfig
 	width       int
@@ -52,10 +52,10 @@ func NewWithFlow(width, height int, cfg *config.ExplorerConfig, flow string) *Mo
 	m := New(width, height, cfg)
 	switch flow {
 	case "eip3009":
-		m.eip3009flow = NewEIP3009FlowModel(width, height, cfg)
+		m.eip3009flow = NewEIP3009Flow(width, height, cfg)
 		m.sub = subPageEIP3009
 	case "permit2":
-		m.permit2flow = NewPermit2FlowModel(width, height, cfg)
+		m.permit2flow = NewPermit2Flow(width, height, cfg)
 		m.sub = subPagePermit2
 	case "sidebyside":
 		m.sidebyside = NewSideBySideModel(width, height, cfg)
@@ -96,11 +96,11 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 				var initCmd tea.Cmd
 				switch m.menu.Selected() {
 				case 0:
-					m.eip3009flow = NewEIP3009FlowModel(m.width, m.height, m.cfg)
+					m.eip3009flow = NewEIP3009Flow(m.width, m.height, m.cfg)
 					m.sub = subPageEIP3009
 					initCmd = m.eip3009flow.Init()
 				case 1:
-					m.permit2flow = NewPermit2FlowModel(m.width, m.height, m.cfg)
+					m.permit2flow = NewPermit2Flow(m.width, m.height, m.cfg)
 					m.sub = subPagePermit2
 					initCmd = m.permit2flow.Init()
 				case 2:
@@ -113,6 +113,7 @@ func (m *Model) Update(msg tea.Msg) (tui.SubModel, tea.Cmd) {
 		}
 
 		if msg.String() == "esc" {
+			m.closeActiveExecutor()
 			m.sub = subPageMenu
 			return m, nil
 		}
@@ -168,6 +169,18 @@ func (m *Model) View() string {
 			}
 		}
 		return content
+	}
+}
+
+// closeActiveExecutor releases resources held by the active flow executor.
+func (m *Model) closeActiveExecutor() {
+	if m.eip3009flow != nil && m.eip3009flow.executor != nil {
+		m.eip3009flow.executor.Close()
+		m.eip3009flow = nil
+	}
+	if m.permit2flow != nil && m.permit2flow.executor != nil {
+		m.permit2flow.executor.Close()
+		m.permit2flow = nil
 	}
 }
 

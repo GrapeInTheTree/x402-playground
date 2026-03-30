@@ -2,6 +2,7 @@ package demo
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -45,7 +46,9 @@ func QueryBalances(ctx context.Context, client *ethclient.Client, usdcAddr strin
 		if err == nil && len(result) > 0 {
 			out, err := erc20ABI.Unpack("balanceOf", result)
 			if err == nil && len(out) > 0 {
-				usdcBal = out[0].(*big.Int)
+				if val, ok := out[0].(*big.Int); ok {
+					usdcBal = val
+				}
 			}
 		}
 
@@ -90,7 +93,10 @@ func QueryAllowance(ctx context.Context, client *ethclient.Client, tokenAddr, ow
 		return "0", err
 	}
 
-	val := out[0].(*big.Int)
+	val, ok := out[0].(*big.Int)
+	if !ok {
+		return "0", fmt.Errorf("unexpected type from allowance call: %T", out[0])
+	}
 	usdcDiv := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(6), nil))
 	formatted := new(big.Float).Quo(new(big.Float).SetInt(val), usdcDiv)
 

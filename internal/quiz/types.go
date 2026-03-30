@@ -1,5 +1,7 @@
 package quiz
 
+import "sync"
+
 // Question defines a coding quiz question.
 type Question struct {
 	ID          string
@@ -38,7 +40,39 @@ type ModuleProgress struct {
 }
 
 // QuizProgress tracks overall quiz progress shared between Learn and Dashboard.
+// Thread-safe: use getter/setter methods for concurrent access.
 type QuizProgress struct {
+	mu      sync.RWMutex
 	Modules []ModuleProgress
 	Score   Score
+}
+
+// SetModules updates the module progress list.
+func (qp *QuizProgress) SetModules(modules []ModuleProgress) {
+	qp.mu.Lock()
+	defer qp.mu.Unlock()
+	qp.Modules = modules
+}
+
+// GetModules returns a copy of the module progress list.
+func (qp *QuizProgress) GetModules() []ModuleProgress {
+	qp.mu.RLock()
+	defer qp.mu.RUnlock()
+	out := make([]ModuleProgress, len(qp.Modules))
+	copy(out, qp.Modules)
+	return out
+}
+
+// SetScore updates the score.
+func (qp *QuizProgress) SetScore(s Score) {
+	qp.mu.Lock()
+	defer qp.mu.Unlock()
+	qp.Score = s
+}
+
+// GetScore returns the current score.
+func (qp *QuizProgress) GetScore() Score {
+	qp.mu.RLock()
+	defer qp.mu.RUnlock()
+	return qp.Score
 }

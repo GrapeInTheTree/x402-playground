@@ -12,11 +12,22 @@ import (
 	"github.com/GrapeInTheTree/x402-playground/internal/tui"
 )
 
-// Permit2FlowModel manages the Permit2 10-step payment flow with live execution.
-type Permit2FlowModel struct {
+type stepResultMsg struct {
+	step int
+	data string
+}
+
+type stepErrorMsg struct {
+	step int
+	err  error
+}
+
+// PaymentFlowModel manages a 10-step payment flow with live execution.
+// Parameterized by flow type (eip3009 or permit2) and step descriptions.
+type PaymentFlowModel struct {
 	sm       stepManager
 	executor *demo.LiveExecutor
-	execErr  string
+	execErr  string // error creating executor
 	running  bool
 	spinner  spinner.Model
 	results  [10]string
@@ -26,27 +37,49 @@ type Permit2FlowModel struct {
 	cfg      *config.ExplorerConfig
 }
 
-// NewPermit2FlowModel creates a new Permit2 flow model with live executor.
-func NewPermit2FlowModel(width, height int, cfg *config.ExplorerConfig) *Permit2FlowModel {
-	descriptions := []stepDesc{
-		{"Check wallet addresses + Permit2 approve", "—", "—"},
-		{"—", "Call GET /supported", "/supported response"},
-		{"GET /weather (no payment)", "402 + assetTransferMethod:permit2", "—"},
-		{"Decode PAYMENT-REQUIRED (Permit2)", "—", "—"},
-		{"Create Permit2 EIP-712 signature", "—", "—"},
-		{"Send PAYMENT-SIGNATURE", "Parse header → /verify", "—"},
-		{"—", "Forward /verify request", "Permit2 signature + allowance verification"},
-		{"Receive 200 + data", "Return data + /settle", "—"},
-		{"—", "—", "Submit x402Permit2Proxy.settle()"},
-		{"Check final balances", "—", "—"},
-	}
+var eip3009Descriptions = []stepDesc{
+	{"Check wallet addresses", "—", "—"},
+	{"—", "Call GET /supported", "/supported response"},
+	{"GET /weather (no payment)", "Returns 402", "—"},
+	{"Decode PAYMENT-REQUIRED", "—", "—"},
+	{"Create EIP-712 signature", "—", "—"},
+	{"Send PAYMENT-SIGNATURE", "Parse header → /verify", "—"},
+	{"—", "Forward /verify request", "Verify signature/balance/simulation"},
+	{"Receive 200 + data", "Return data + /settle", "—"},
+	{"—", "—", "Submit on-chain transaction"},
+	{"Check final balances", "—", "—"},
+}
 
+var permit2Descriptions = []stepDesc{
+	{"Check wallet addresses + Permit2 approve", "—", "—"},
+	{"—", "Call GET /supported", "/supported response"},
+	{"GET /weather (no payment)", "402 + assetTransferMethod:permit2", "—"},
+	{"Decode PAYMENT-REQUIRED (Permit2)", "—", "—"},
+	{"Create Permit2 EIP-712 signature", "—", "—"},
+	{"Send PAYMENT-SIGNATURE", "Parse header → /verify", "—"},
+	{"—", "Forward /verify request", "Permit2 signature + allowance verification"},
+	{"Receive 200 + data", "Return data + /settle", "—"},
+	{"—", "—", "Submit x402Permit2Proxy.settle()"},
+	{"Check final balances", "—", "—"},
+}
+
+// NewEIP3009Flow creates a payment flow model for EIP-3009.
+func NewEIP3009Flow(width, height int, cfg *config.ExplorerConfig) *PaymentFlowModel {
+	return newPaymentFlowModel(width, height, cfg, "eip3009", eip3009Descriptions)
+}
+
+// NewPermit2Flow creates a payment flow model for Permit2.
+func NewPermit2Flow(width, height int, cfg *config.ExplorerConfig) *PaymentFlowModel {
+	return newPaymentFlowModel(width, height, cfg, "permit2", permit2Descriptions)
+}
+
+func newPaymentFlowModel(width, height int, cfg *config.ExplorerConfig, method string, descriptions []stepDesc) *PaymentFlowModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(tui.ColorAccent)
 
-	m := &Permit2FlowModel{
-		sm:      newStepManager(demo.NewFlowState("permit2"), descriptions),
+	m := &PaymentFlowModel{
+		sm:      newStepManager(demo.NewFlowState(method), descriptions),
 		spinner: s,
 		width:   width,
 		height:  height,
@@ -56,7 +89,7 @@ func NewPermit2FlowModel(width, height int, cfg *config.ExplorerConfig) *Permit2
 	if cfg != nil {
 		exec, err := demo.NewLiveExecutor(
 			cfg.FacilitatorURL, cfg.ResourceURL, cfg.RPCURL,
-			cfg.USDCAddress, cfg.PayToAddress, cfg.ClientPrivateKey, "permit2",
+			cfg.USDCAddress, cfg.PayToAddress, cfg.ClientPrivateKey, method,
 		)
 		if err != nil {
 			m.execErr = err.Error()
@@ -71,12 +104,12 @@ func NewPermit2FlowModel(width, height int, cfg *config.ExplorerConfig) *Permit2
 }
 
 // Init starts the spinner tick.
-func (m *Permit2FlowModel) Init() tea.Cmd {
+func (m *PaymentFlowModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
 // Update handles key events, step results, and spinner ticks.
-func (m *Permit2FlowModel) Update(msg tea.Msg) tea.Cmd {
+func (m *PaymentFlowModel) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !m.running {
@@ -107,7 +140,7 @@ func (m *Permit2FlowModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
-func (m *Permit2FlowModel) executeCurrentStep() tea.Cmd {
+func (m *PaymentFlowModel) executeCurrentStep() tea.Cmd {
 	if m.executor == nil {
 		return nil
 	}
@@ -127,8 +160,8 @@ func (m *Permit2FlowModel) executeCurrentStep() tea.Cmd {
 	}
 }
 
-// View renders the Permit2 flow panels and current step detail.
-func (m *Permit2FlowModel) View() string {
+// View renders the flow panels and current step detail.
+func (m *PaymentFlowModel) View() string {
 	view := m.sm.view(m.width)
 
 	step := m.sm.flow.CurrentStep

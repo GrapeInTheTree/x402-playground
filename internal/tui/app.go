@@ -49,6 +49,11 @@ type SubModel interface {
 	SetSize(width, height int)
 }
 
+// Cleaner is optionally implemented by SubModels that hold resources.
+type Cleaner interface {
+	Cleanup()
+}
+
 // SubModelFactory creates a SubModel. Used to lazily initialize pages.
 type SubModelFactory func(width, height int) SubModel
 
@@ -121,6 +126,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
+			m.cleanupAll()
 			return m, tea.Quit
 		}
 		if msg.String() == "?" {
@@ -132,6 +138,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.currentPage == PageHome && msg.String() == "q" {
+			m.cleanupAll()
 			return m, tea.Quit
 		}
 	}
@@ -152,6 +159,15 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// cleanupAll calls Cleanup on all pages that implement Cleaner.
+func (m RootModel) cleanupAll() {
+	for _, sub := range m.pages {
+		if c, ok := sub.(Cleaner); ok {
+			c.Cleanup()
+		}
+	}
 }
 
 // innerSize returns the content area inside the chrome (header + status).

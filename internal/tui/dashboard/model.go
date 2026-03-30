@@ -229,7 +229,15 @@ func progressBar(passed, total, width int) string {
 }
 
 func (m *Model) renderProgressPanel(panelW int) string {
-	if m.progress == nil || len(m.progress.Modules) == 0 {
+	if m.progress == nil {
+		title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorSecondary).
+			Render("Quiz Progress")
+		hint := tui.MutedStyle.Render("Complete quizzes in Learn\nto see progress here.")
+		return lipgloss.JoinVertical(lipgloss.Left, title, "", hint)
+	}
+
+	modules := m.progress.GetModules()
+	if len(modules) == 0 {
 		title := lipgloss.NewStyle().Bold(true).Foreground(tui.ColorSecondary).
 			Render("Quiz Progress")
 		hint := tui.MutedStyle.Render("Complete quizzes in Learn\nto see progress here.")
@@ -241,7 +249,7 @@ func (m *Model) renderProgressPanel(panelW int) string {
 
 	// Totals
 	totalQ, totalPassed, totalAttempted := 0, 0, 0
-	for _, mod := range m.progress.Modules {
+	for _, mod := range modules {
 		totalQ += mod.Total
 		totalPassed += mod.Passed
 		totalAttempted += mod.Attempted
@@ -272,7 +280,7 @@ func (m *Model) renderProgressPanel(panelW int) string {
 	checkStyle := lipgloss.NewStyle().Foreground(tui.ColorSuccess)
 
 	var rows strings.Builder
-	for _, mod := range m.progress.Modules {
+	for _, mod := range modules {
 		bar := progressBar(mod.Passed, mod.Total, barW)
 		check := "  "
 		if mod.Passed == mod.Total && mod.Total > 0 {

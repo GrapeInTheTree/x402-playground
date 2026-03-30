@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -27,6 +28,9 @@ type LiveExecutor struct {
 	ClientKey      string
 	EndpointPath   string
 	TransferMethod string
+
+	// HTTP client with timeout for all outbound calls
+	httpClient *http.Client
 
 	// Accumulated state across steps
 	ethClient        *ethclient.Client
@@ -67,6 +71,7 @@ func NewLiveExecutor(facilitatorURL, resourceURL, rpcURL, usdcAddr, payToAddr, c
 		ClientKey:      clientKey,
 		EndpointPath:   "/weather",
 		TransferMethod: transferMethod,
+		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}, nil
 }
 
@@ -107,7 +112,7 @@ func (e *LiveExecutor) step1WalletOverview(ctx context.Context) (string, error) 
 
 	// Try to get facilitator address from /health
 	e.facilitatorAddr = "(unknown)"
-	resp, err := http.Get(e.FacilitatorURL + "/health")
+	resp, err := e.httpClient.Get(e.FacilitatorURL + "/health")
 	if err == nil {
 		var health struct {
 			Address string `json:"address"`
@@ -146,7 +151,7 @@ func (e *LiveExecutor) step1WalletOverview(ctx context.Context) (string, error) 
 }
 
 func (e *LiveExecutor) step2Supported(_ context.Context) (string, error) {
-	resp, err := http.Get(e.FacilitatorURL + "/supported")
+	resp, err := e.httpClient.Get(e.FacilitatorURL + "/supported")
 	if err != nil {
 		return "", fmt.Errorf("GET /supported failed: %w", err)
 	}
@@ -160,7 +165,7 @@ func (e *LiveExecutor) step2Supported(_ context.Context) (string, error) {
 
 func (e *LiveExecutor) step3NaiveCall(_ context.Context) (string, error) {
 	targetURL := e.ResourceURL + e.EndpointPath
-	resp, err := http.Get(targetURL)
+	resp, err := e.httpClient.Get(targetURL)
 	if err != nil {
 		return "", fmt.Errorf("GET %s failed: %w", targetURL, err)
 	}
@@ -170,10 +175,8 @@ func (e *LiveExecutor) step3NaiveCall(_ context.Context) (string, error) {
 	// Store for later steps
 	e.body402 = body
 	e.resp402Headers = make(map[string]string)
-	for k, v := range resp.Header {
-		if len(v) > 0 {
-			e.resp402Headers[k] = v[0]
-		}
+	for k := range resp.Header {
+		e.resp402Headers[k] = resp.Header.Get(k)
 	}
 
 	return fmt.Sprintf("HTTP %d %s\n\nBody: %s", resp.StatusCode, http.StatusText(resp.StatusCode), string(body)), nil
@@ -181,9 +184,6 @@ func (e *LiveExecutor) step3NaiveCall(_ context.Context) (string, error) {
 
 func (e *LiveExecutor) step4DecodeHeader() (string, error) {
 	headerVal := e.resp402Headers["Payment-Required"]
-	if headerVal == "" {
-		headerVal = e.resp402Headers["PAYMENT-REQUIRED"]
-	}
 	if headerVal == "" {
 		return "", fmt.Errorf("no PAYMENT-REQUIRED header in 402 response")
 	}
@@ -259,7 +259,7 @@ func (e *LiveExecutor) step7Verify(_ context.Context) (string, error) {
 	}
 	verifyJSON, _ := json.Marshal(verifyBody)
 
-	resp, err := http.Post(e.FacilitatorURL+"/verify", "application/json", strings.NewReader(string(verifyJSON)))
+	resp, err := e.httpClient.Post(e.FacilitatorURL+"/verify", "application/json", strings.NewReader(string(verifyJSON)))
 	if err != nil {
 		return "", fmt.Errorf("POST /verify: %w", err)
 	}
@@ -278,7 +278,7 @@ func (e *LiveExecutor) step8PaidRequest(ctx context.Context) (string, error) {
 	req, _ := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	req.Header.Set(e.headerName, e.headerValue)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("paid request: %w", err)
 	}
@@ -286,10 +286,8 @@ func (e *LiveExecutor) step8PaidRequest(ctx context.Context) (string, error) {
 	resp.Body.Close()
 
 	e.paidRespHeaders = make(map[string]string)
-	for k, v := range resp.Header {
-		if len(v) > 0 {
-			e.paidRespHeaders[k] = v[0]
-		}
+	for k := range resp.Header {
+		e.paidRespHeaders[k] = resp.Header.Get(k)
 	}
 
 	return fmt.Sprintf("HTTP %d %s\n\n%s", resp.StatusCode, http.StatusText(resp.StatusCode), FormatJSON(body)), nil
@@ -297,9 +295,6 @@ func (e *LiveExecutor) step8PaidRequest(ctx context.Context) (string, error) {
 
 func (e *LiveExecutor) step9Settlement() (string, error) {
 	prHeader := e.paidRespHeaders["Payment-Response"]
-	if prHeader == "" {
-		prHeader = e.paidRespHeaders["PAYMENT-RESPONSE"]
-	}
 
 	if prHeader == "" {
 		return "PAYMENT-RESPONSE header not found\n(Settlement may still be in progress or requires separate confirmation)", nil

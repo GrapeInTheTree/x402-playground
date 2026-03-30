@@ -9,6 +9,11 @@ services:
     env_file: .env
     environment:
       FACILITATOR_PORT: "4022"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4022/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
   resource:
     build:
@@ -22,4 +27,5 @@ services:
       RESOURCE_PORT: "4021"
       FACILITATOR_URL: "http://facilitator:4022"
     depends_on:
-      - facilitator
+      facilitator:
+        condition: service_healthy

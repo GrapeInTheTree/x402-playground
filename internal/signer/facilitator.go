@@ -227,12 +227,12 @@ func (s *FacilitatorSigner) sendRawTx(ctx context.Context, to string, data []byt
 		Data:      data,
 	})
 	if err != nil {
-		gasLimit = 300_000 // fallback
+		gasLimit = 300_000 // fallback includes margin
 		s.logger.Warn("gas estimation failed, using fallback", "error", err, "gasLimit", gasLimit)
+	} else {
+		// Add 20% buffer only when estimation succeeded
+		gasLimit = gasLimit * 120 / 100
 	}
-
-	// Add 20% buffer
-	gasLimit = gasLimit * 120 / 100
 
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   chainID,

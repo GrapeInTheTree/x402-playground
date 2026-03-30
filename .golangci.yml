@@ -1,0 +1,20 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - misspell
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (io.Closer).Close
+      - (*os/exec.Cmd).Run
+      - (encoding/json.Decoder).Decode
+
+issues:
+  exclude-dirs:
+    - test

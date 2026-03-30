@@ -50,7 +50,7 @@ func TestLoadResource_MissingRequired(t *testing.T) {
 
 func TestLoadResource_Valid(t *testing.T) {
 	t.Setenv("FACILITATOR_URL", "http://localhost:4022")
-	t.Setenv("PAY_TO_ADDRESS", "0x1234")
+	t.Setenv("PAY_TO_ADDRESS", "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
 
 	cfg, err := LoadResource()
 	if err != nil {
@@ -103,7 +103,7 @@ func TestLoadFacilitator_Permit2(t *testing.T) {
 
 func TestLoadResource_Permit2(t *testing.T) {
 	t.Setenv("FACILITATOR_URL", "http://localhost:4022")
-	t.Setenv("PAY_TO_ADDRESS", "0x1234")
+	t.Setenv("PAY_TO_ADDRESS", "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
 	t.Setenv("ASSET_TRANSFER_METHOD", "permit2")
 
 	cfg, err := LoadResource()
